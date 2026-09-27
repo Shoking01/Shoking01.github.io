@@ -1,0 +1,94 @@
+---
+/**
+ * AsciiRule — a section separator drawn in box-drawing characters.
+ *
+ *   align start    ─ PROJECTS ──────────────────────
+ *   align center   ───────── PROJECTS ─────────────
+ *   no label       ────────────────────────────────
+ *
+ * The label is a real heading element, not a decoration, so the section is announced
+ * correctly and is reachable by heading navigation. Only the rules are `aria-hidden`.
+ * If a real heading would duplicate one already on the page, pass `as="div"` and the
+ * label becomes plain text.
+ *
+ * The rules are flex, not counted. Each one holds a long run of `─` and is clipped by
+ * the container, and because a `─` overhangs its cell by 20 units on each side a
+ * clipped run is still one unbroken line — so a narrow viewport shortens the rule
+ * instead of opening a gap in it. Counting characters would need the label width, the
+ * alignment and the container width to agree exactly; flex cannot disagree.
+ */
+
+interface Props {
+  /** Text set into the rule. Omit for a bare rule. */
+  label?: string
+  /** Rule width in character cells. */
+  cols?: number
+  align?: 'start' | 'center'
+  /** Element to render. Use `div` when a real heading would be a duplicate. */
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'div'
+  class?: string
+}
+
+const { label, cols = 64, align = 'start', as: Tag = 'h2', class: className } = Astro.props
+
+// Long enough to fill any plausible container; the flex track clips the rest.
+const rule = '\u2500'.repeat(256)
+---
+
+<div
+  class:list={['rule', `rule--${align}`, !label && 'rule--bare', className]}
+  style={`--cols:${cols};`}
+>
+  {label ? (
+    <>
+      <span class="rule__rail rule__rail--lead" aria-hidden="true">{rule}</span>
+      <Tag class="rule__label">{label}</Tag>
+      <span class="rule__rail rule__rail--trail" aria-hidden="true">{rule}</span>
+    </>
+  ) : (
+    <span class="rule__rail rule__rail--only" aria-hidden="true">{rule}</span>
+  )}
+</div>
+
+<style>
+  .rule {
+    display: flex;
+    align-items: baseline;
+    width: 100%;
+    max-width: min(calc(var(--cols) * 1ch), 100%);
+    color: var(--c-frame);
+    font-size: var(--text-base);
+    font-variant-ligatures: none;
+    letter-spacing: normal;
+  }
+
+  .rule__label {
+    flex: 0 0 auto;
+    /* One cell of air either side of the label. The tracking is safe here because a
+       label never contains a box-drawing character. */
+    margin-inline: 1ch;
+    font-size: var(--text-micro);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--c-text-muted);
+    white-space: pre;
+  }
+
+  .rule__rail {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: pre;
+  }
+
+  /* `start` puts the label against the left edge with a single cell of rule before it;
+     `center` gives the two rails equal weight so the label sits in the middle. */
+  .rule--start .rule__rail--lead {
+    flex: 0 0 1ch;
+  }
+
+  .rule--bare .rule__rail--only {
+    flex: 1 1 auto;
+  }
+</style>

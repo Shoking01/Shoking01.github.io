@@ -87,9 +87,37 @@ src/
     Box.astro            Elevation-ramp surface primitive
   styles/
     tokens.css           Catppuccin Mocha → CSS custom properties
+    fonts.css            Self-hosted JetBrains Mono, two faces
     typography.css       Type scale, measure, reading defaults
     global.css           Reset, base styles, focus, reduced motion
   pages/
     index.astro          Home
     projects/[...slug].astro   Project detail
 ```
+
+## The frame is a character grid
+
+`Panel` does not draw a CSS border and paste corner glyphs on it. The frame is real
+box-drawing text on a grid measured in `ch`, which is possible because of how the
+glyphs were drawn:
+
+| Glyph | Metrics (upem 1000, advance 600) | Consequence |
+| :-- | :-- | :-- |
+| `─` | ink `x -20..620` | overhangs its cell by 20 units each side, so a run tiles seamlessly |
+| `│` | ink `y -400..1120`, stem `x 250..350` | 1.52 em tall, so at `line-height: 1.5` consecutive stems overlap by 0.02 em and read as one hairline |
+| `╭ ╮ ╯ ╰` | 0.1 em arms on the 600 advance | meet the rails without a seam |
+
+`--leading-chrome: 1.5` is therefore not a style preference. It is the only
+line-height at which `│` connects, and it is why the chrome and prose scales are
+defined together.
+
+Consequences worth knowing before editing `Panel`:
+
+- `Panel` is for chrome. Case-study prose drops the frame entirely and uses the
+  `.prose` reading mode, which runs at `line-height: 1.75`. A `│` chain at 1.75
+  would break into dashes, which is one more reason the frame comes off.
+- `cols` is a character count, not a pixel width. A panel is
+  `min(cols ch, 100%)`, and the rails are clipped rather than gapped when the
+  viewport is narrower, because a clipped `─` is still part of a continuous line.
+- Every frame element is `aria-hidden`. Panel content is ordinary markup.
+

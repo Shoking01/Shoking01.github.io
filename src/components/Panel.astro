@@ -1,0 +1,186 @@
+---
+/**
+ * Panel — the rounded box-drawing frame.
+ *
+ * The frame is a real character grid, not a CSS border with glyphs pasted on the
+ * corners. That is a deliberate choice and the glyph metrics are what make it
+ * possible. Measured from `JetBrainsMono[wght].ttf` (upem 1000, advance 600):
+ *
+ *   `─` U+2500  x -20..620  y  320..420   ink overhangs the 600 advance by 20 units
+ *                                        on each side, so a run of `─` tiles seamlessly.
+ *   `│` U+2502  x 250..350  y -400..1120  the stem is 0.1 em wide, dead centre in the
+ *                                        cell, and 1.52 em tall. At `line-height: 1.5`
+ *                                        consecutive stems overlap by 0.02 em, so a
+ *                                        column of `│` is one continuous hairline.
+ *   `╭ ╮ ╰ ╯`  each corner carries a 0.1 em arm on the 600 advance, so the corners
+ *                                        meet the rails without a seam.
+ *
+ * `1.5` is therefore not an arbitrary line height — it is the only value at which
+ * `│` connects. It is `--leading-chrome` in typography.css, and the two are kept
+ * together deliberately.
+ *
+ * Width is measured in character cells via `ch`, which for a monospace face is the
+ * real advance width, so `--cols: 64` means the frame is 64 characters wide. Panels
+ * are capped at that width and fall back to the viewport width below it; the rails
+ * are clipped rather than gapped when that happens, because a clipped `─` run is
+ * still a continuous line.
+ *
+ * Every frame element is `aria-hidden`. The panel's content is ordinary markup.
+ */
+
+interface Props {
+  /** Frame width in character cells. */
+  cols?: number
+  /**
+   * How far the vertical rails are allowed to run. The chain is clipped by the panel
+   * height, so this only needs to exceed the tallest panel's line count.
+   */
+  rows?: number
+  /** Surface the panel sits on. Depth comes from the elevation ramp, never a shadow. */
+  surface?: 'sunken' | 'chrome' | 'page' | 'panel' | 'raised' | 'highest'
+  class?: string
+  id?: string
+}
+
+const {
+  cols = 64,
+  rows = 64,
+  surface = 'panel',
+  class: className,
+  id,
+} = Astro.props
+
+// One cell is consumed by each corner. The rails fill what is left.
+const rail = '\u2500'.repeat(Math.max(cols - 2, 1))
+const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
+---
+
+<div
+  class:list={['panel', `panel--${surface}`, className]}
+  style={`--cols:${cols};`}
+  id={id}
+>
+  <span class="panel__corner panel__corner--tl" aria-hidden="true">╭</span>
+  <span class="panel__rail panel__rail--top" aria-hidden="true">{rail}</span>
+  <span class="panel__corner panel__corner--tr" aria-hidden="true">╮</span>
+
+  <div class="panel__middle">
+    <span class="panel__vrail panel__vrail--left" aria-hidden="true">{vrail}</span>
+    <div class="panel__body">
+      <slot />
+    </div>
+    <span class="panel__vrail panel__vrail--right" aria-hidden="true">{vrail}</span>
+  </div>
+
+  <span class="panel__corner panel__corner--bl" aria-hidden="true">╰</span>
+  <span class="panel__rail panel__rail--bottom" aria-hidden="true">{rail}</span>
+  <span class="panel__corner panel__corner--br" aria-hidden="true">╯</span>
+</div>
+
+<style>
+  .panel {
+    --panel-pad-block: 0.7em;
+
+    position: relative;
+    display: grid;
+    grid-template-columns: 1ch minmax(0, 1fr) 1ch;
+    grid-template-rows: auto auto auto;
+    width: 100%;
+    max-width: min(calc(var(--cols) * 1ch), 100%);
+    color: var(--c-frame);
+    font-variant-ligatures: none;
+    letter-spacing: normal;
+  }
+
+  .panel--page {
+    background-color: var(--surface-page);
+  }
+  .panel--sunken {
+    background-color: var(--surface-sunken);
+  }
+  .panel--chrome {
+    background-color: var(--surface-chrome);
+  }
+  .panel--panel {
+    background-color: var(--surface-panel);
+  }
+  .panel--raised {
+    background-color: var(--surface-raised);
+  }
+  .panel--highest {
+    background-color: var(--surface-highest);
+  }
+
+  /* The four corners sit in single-cell columns so the rails and the vertical rules
+     land on the same grid. Each is a lone glyph in a normal line box, which puts its
+     ink exactly where the character grid says it should be. */
+  .panel__corner,
+  .panel__rail,
+  .panel__vrail {
+    white-space: pre;
+    line-height: var(--leading-chrome);
+  }
+
+  .panel__corner--tl {
+    grid-area: 1 / 1;
+  }
+  .panel__corner--tr {
+    grid-area: 1 / 3;
+  }
+  .panel__corner--bl {
+    grid-area: 3 / 1;
+  }
+  .panel__corner--br {
+    grid-area: 3 / 3;
+  }
+
+  .panel__rail--top {
+    grid-area: 1 / 2;
+    overflow: hidden;
+  }
+  .panel__rail--bottom {
+    grid-area: 3 / 2;
+    overflow: hidden;
+  }
+
+  .panel__middle {
+    /* Spans all three columns. Without this, auto-placement drops it into the first
+       free cell — the 1ch corner column — and the whole frame collapses. */
+    grid-area: 2 / 1 / 3 / 4;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1ch minmax(0, 1fr) 1ch;
+  }
+
+  /* Absolute, so the 64-line chain never contributes height to the row. It is clipped
+     by the panel instead, and since every `│` stem overhangs its line box, clipping
+     can only shorten the last stem — it can never open a gap.
+
+     `top`/`bottom` are 0, not the body's block padding. A `│` is a continuous hairline
+     first and a per-line marker second: insetting it by the padding left a visible
+     break between the top rail and the first stem, and between the last stem and the
+     bottom rail. */
+  .panel__vrail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1ch;
+    overflow: hidden;
+  }
+  .panel__vrail--left {
+    left: 0;
+  }
+  .panel__vrail--right {
+    right: 0;
+  }
+
+  .panel__body {
+    grid-area: 1 / 2;
+    padding-block: var(--panel-pad-block);
+    /* One cell of breathing room inside the vertical rule on each side. Padding, not
+       margin, so the grid track stays `cols - 2` cells wide and the rails still meet
+       the corners. */
+    padding-inline: 1ch;
+    color: var(--c-text);
+  }
+</style>

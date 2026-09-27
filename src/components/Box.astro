@@ -1,0 +1,66 @@
+---
+/**
+ * Box — the elevation primitive.
+ *
+ * Depth on this site comes from the Catppuccin elevation ramp, not from shadows. A
+ * shadow on a `#1e1e2e` page reads as a smudge; a step from `surface0` to `surface1`
+ * reads as a panel sitting above the page. So the only thing `Box` needs to do is pick
+ * a rung.
+ *
+ *   sunken   crust      recessed wells, code, the footer
+ *   chrome   mantle     nav and other terminal chrome
+ *   page     base       the page itself
+ *   panel    surface0   cards and panels — the default raised surface
+ *   raised   surface1   a panel nested inside another panel, hover states
+ *   highest  surface2   pressed and active states
+ *
+ * `inset` adds a hairline that carries meaning (a focused or selected field) rather
+ * than a hairline that merely separates (a decorative divider). The two are different
+ * tokens on purpose: `--c-line-strong` clears 5.65:1 on a panel, `--c-line-subtle` is
+ * 1.88:1 and is for division only.
+ */
+
+interface Props {
+  surface?: 'sunken' | 'chrome' | 'page' | 'panel' | 'raised' | 'highest'
+  /** Hairline that carries meaning, rather than one that merely separates. */
+  inset?: boolean
+  /** Element to render. */
+  as?: 'div' | 'section' | 'article' | 'aside' | 'li' | 'article' | 'nav' | 'header' | 'footer'
+  class?: string
+}
+
+const { surface = 'panel', inset = false, as: Tag = 'div', class: className } = Astro.props
+---
+
+<Tag class:list={['box', `box--${surface}`, inset && 'box--inset', className]}>
+  <slot />
+</Tag>
+
+<style>
+  .box {
+    min-width: 0;
+  }
+
+  .box--sunken {
+    background-color: var(--surface-sunken);
+  }
+  .box--chrome {
+    background-color: var(--surface-chrome);
+  }
+  .box--page {
+    background-color: var(--surface-page);
+  }
+  .box--panel {
+    background-color: var(--surface-panel);
+  }
+  .box--raised {
+    background-color: var(--surface-raised);
+  }
+  .box--highest {
+    background-color: var(--surface-highest);
+  }
+
+  .box--inset {
+    border: 1px solid var(--c-line-strong);
+  }
+</style>
