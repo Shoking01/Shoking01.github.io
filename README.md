@@ -122,6 +122,32 @@ version Astro 7 resolves — has no `defaultColor` option to suppress that. The 
 are exactly `--surface-sunken` and `--c-text` in `global.css`. If you change one, change
 `mochaHex` so both move.
 
+## Metadata
+
+`src/components/Seo.astro` owns the document head. `title`, `description` and
+`canonical` are required props, so no page can render without them, and every Open
+Graph and Twitter tag is derived from those same three values rather than restated —
+which is the usual way a social card ends up disagreeing with the page it describes.
+The canonical URL is resolved against `site.url`, so it is absolute.
+
+`@astrojs/sitemap` reads the same `site.url` from `astro.config.mjs`, so the sitemap
+and the canonical links cannot drift apart. A case study is `og:type=article` and adds
+`article:published_time`; the home page is `website`.
+
+### Known gap: no `og:image`
+
+There is deliberately no `og:image`. Every crawler that matters renders JPEG, PNG or
+WebP and silently drops an SVG, and producing a raster here would mean adding an image
+pipeline to a static site for one asset. `twitter:card` is therefore `summary` rather
+than `summary_large_image`, which would ask for a large card this page cannot supply.
+
+To close it: drop a 1200×630 image at `public/og.png` and add
+
+```astro
+<meta property="og:image" content={new URL('/og.png', site.url).href} />
+<meta name="twitter:card" content="summary_large_image" />
+```
+
 ## Layout
 
 ```text

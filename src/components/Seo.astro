@@ -1,0 +1,56 @@
+---
+import { site } from '../site.config'
+
+/**
+ * Per-page document metadata.
+ *
+ * Three rules, and they are the reason this is a component rather than a paragraph of
+ * tags in the layout:
+ *
+ *   1. `title`, `description` and `canonical` are required. A page cannot render
+ *      without them, so there is no default that silently ships an empty description
+ *      to a crawler.
+ *   2. Every Open Graph and Twitter tag is derived from the same three values. There
+ *      is no second copy of the description to forget to update, which is the usual
+ *      way social cards end up disagreeing with the page.
+ *   3. The canonical URL is resolved against `site.url`, so it is absolute. A relative
+ *      canonical is not a canonical.
+ *
+ * NO `og:image`. Deliberate, and it is a real gap rather than an oversight: every
+ * crawler that matters renders JPEG, PNG or WebP and silently drops an SVG, and
+ * producing a raster image here would mean adding an image pipeline to a static site
+ * for one asset. `twitter:card` is therefore `summary` rather than
+ * `summary_large_image`, which asks for a large card this page cannot supply. Adding a
+ * real image means dropping a 1200x630 file at `public/og.png` and adding the tag here.
+ */
+
+interface Props {
+  title: string
+  description: string
+  /** Open Graph object type. `article` on a case study, `website` on a listing page. */
+  type?: 'website' | 'article'
+  /** ISO date, for `article:published_time`. Omitted when absent. */
+  publishedTime?: string
+}
+
+const { title, description, type = 'website', publishedTime } = Astro.props
+
+const canonical = new URL(Astro.url.pathname, site.url).href
+---
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={site.name} />
+<meta property="og:locale" content={site.locale.replace('-', '_')} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+{publishedTime && <meta property="article:published_time" content={publishedTime} />}
+
+<!-- `summary`, not `summary_large_image`: there is no large image. See the note above. -->
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />

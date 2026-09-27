@@ -48,7 +48,13 @@ const year = date.getUTCFullYear()
 const sections = headings.filter((h) => h.depth === 2 && h.slug)
 ---
 
-<BaseLayout title={`${title} — ${site.name}`} description={description} wide>
+<BaseLayout
+  title={`${title} — ${site.name}`}
+  description={description}
+  type="article"
+  publishedTime={date.toISOString()}
+  wide
+>
   <Panel class="case__header">
     <nav class="case__crumb" aria-label="Breadcrumb">
       <a class="case__crumb-link" href="/">~/</a>
