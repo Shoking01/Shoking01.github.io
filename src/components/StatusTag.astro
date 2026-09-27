@@ -1,0 +1,63 @@
+---
+/**
+ * Lifecycle state, rendered three ways at once.
+ *
+ * A word, a glyph and a colour. The colour is the least load-bearing of the three, and
+ * it is there to make the other two quicker to parse, not to carry the meaning — which
+ * is the point of pairing them.
+ *
+ *   active        + active        green
+ *   maintenance   ~ maintenance   yellow
+ *   archived      - archived      dimmed
+ *
+ * The glyphs are ASCII on purpose. `✓` and `✗` live in U+2713 and U+2717, which are
+ * outside both declared font faces, so they would silently fall back to a system font.
+ * `+ ~ -` are in the latin subset and always render as JetBrains Mono.
+ */
+
+const MAP = {
+  active: { glyph: '+', label: 'active', token: '--c-ok' },
+  maintenance: { glyph: '~', label: 'maintenance', token: '--c-warn' },
+  archived: { glyph: '-', label: 'archived', token: '--c-text-muted' },
+} as const
+
+interface Props {
+  status: keyof typeof MAP
+}
+
+const { status } = Astro.props
+const state = MAP[status]
+---
+
+<span class:list={['status', `status--${status}`]}>
+  <span class="status__glyph" aria-hidden="true">{state.glyph}</span>
+  <span class="status__label">{state.label}</span>
+</span>
+
+<style>
+  .status {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4ch;
+    font-size: var(--text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    white-space: nowrap;
+  }
+
+  .status--active {
+    color: var(--c-ok);
+  }
+  .status--maintenance {
+    color: var(--c-warn);
+  }
+  /* Archived is the one state allowed to be quiet: `--c-text-muted` is documented as
+     safe up to `surface0`, and a card sits on `surface0`. */
+  .status--archived {
+    color: var(--c-text-muted);
+  }
+
+  .status__glyph {
+    font-weight: 700;
+  }
+</style>

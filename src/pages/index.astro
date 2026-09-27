@@ -1,32 +1,101 @@
 ---
+import { getCollection } from 'astro:content'
+
 import BaseLayout from '../layouts/BaseLayout.astro'
 import Panel from '../components/Panel.astro'
 import AsciiRule from '../components/AsciiRule.astro'
+import ProjectCard from '../components/ProjectCard.astro'
 import { site } from '../site.config'
+
+/**
+ * Home. A TUI hero, then the project list straight out of the collection.
+ *
+ * There is no project data in this file. `getCollection` reads every markdown file in
+ * `src/content/projects/`, so adding a project adds a card here without touching this
+ * page — which is the whole point of the content layer.
+ *
+ * Sort order is `featured` first, then the author's `order`, then newest first. The
+ * tiebreak matters: two projects with the same `order` should not swap places between
+ * builds.
+ */
+
+const projects = (await getCollection('projects')).sort(
+  (a, b) =>
+    Number(b.data.featured) - Number(a.data.featured) ||
+    a.data.order - b.data.order ||
+    b.data.date.valueOf() - a.data.date.valueOf(),
+)
+
+const hasProjects = projects.length > 0
 ---
 
 <BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
-  <Panel>
+  <Panel class="hero">
     <h1 class="hero__name">{site.name}</h1>
     <p class="hero__role">{site.role}</p>
+    <p class="hero__tagline">
+      {site.tagline}<span class="caret hero__caret" aria-hidden="true">█</span>
+    </p>
   </Panel>
 
-  <AsciiRule label="about" />
+  <div id="projects">
+    <AsciiRule label="projects" />
+  </div>
 
-  <Panel>
-    <p>{site.tagline}</p>
-  </Panel>
+  {
+    hasProjects ? (
+      <ul class="projects">
+        {projects.map((project) => (
+          <li class="projects__item">
+            <ProjectCard project={project} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <Panel>
+        <p class="projects__empty">
+          No projects yet. Create one markdown file in <code>src/content/projects/</code>.
+        </p>
+      </Panel>
+    )
+  }
 </BaseLayout>
 
 <style>
+  .hero {
+    color: var(--c-text);
+  }
+
   .hero__name {
     font-size: var(--text-2xl);
     font-weight: 700;
     line-height: 1.2;
-    color: var(--c-text);
   }
 
   .hero__role {
+    color: var(--c-accent);
+  }
+
+  .hero__tagline {
+    color: var(--c-text-soft);
+    max-width: var(--measure-lede);
+  }
+
+  /* Offset from the nav's caret so the two do not blink in lockstep. */
+  .hero__caret {
+    margin-inline-start: 0.5ch;
+    animation-delay: 0.55s;
+  }
+
+  .projects {
+    display: grid;
+    gap: 1.5ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .projects__empty {
     color: var(--c-text-soft);
   }
 </style>
