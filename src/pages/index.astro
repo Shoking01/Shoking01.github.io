@@ -3,6 +3,7 @@ import { paletteCss } from '../styles/palette'
 import '../styles/fonts.css'
 import '../styles/tokens.css'
 import '../styles/typography.css'
+import '../styles/global.css'
 
 const palette = paletteCss()
 ---
@@ -20,8 +21,9 @@ const palette = paletteCss()
 	<body>
 		<h1>Astro</h1>
 		<p class="prose">Prose mode, for checking the measure and the leading.</p>
-		<pre aria-hidden="true">╭───────────────╮
+		<pre class="frames" aria-hidden="true">╭───────────────╮
 │ rounded frame │
 ╰───────────────╯</pre>
+		<p><span class="caret" aria-hidden="true">█</span></p>
 	</body>
 </html>

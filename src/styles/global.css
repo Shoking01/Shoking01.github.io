@@ -1,0 +1,330 @@
+/*
+ * Global reset, base element styles, focus, and motion policy.
+ *
+ * Layer order, and the reason it is not negotiable:
+ *
+ *   1. reset
+ *   2. page surface + scanline overlay
+ *   3. element defaults
+ *   4. utilities (labels, screen-reader-only)
+ *   5. focus
+ *   6. motion policy  <-- last, so it wins over everything above
+ *
+ * Colour tokens come from tokens.css, type from typography.css. This file never
+ * references a raw `--ctp-*` value.
+ */
+
+/* =====================================================================
+ * 1. Reset
+ * =================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  /* Dark-only site: tell the UA so form controls, scrollbars and the canvas
+     background are dark without a single extra declaration. */
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--surface-highest) var(--surface-page);
+}
+
+body {
+  min-height: 100svh;
+  background-color: var(--surface-page);
+  color: var(--c-text);
+  /* A monospace body wants a slightly taller default leading than a proportional
+     one at the same size. */
+  line-height: var(--leading-chrome);
+  -webkit-font-smoothing: auto;
+}
+
+img,
+picture,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  overflow-wrap: break-word;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+ul,
+ol,
+figure,
+blockquote {
+  overflow-wrap: break-word;
+}
+
+ul[class],
+ol[class] {
+  list-style: none;
+  padding: 0;
+}
+
+a {
+  color: var(--c-link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--c-link-hover);
+}
+
+hr {
+  border: 0;
+  border-block-start: 1px solid var(--c-line-subtle);
+}
+
+table {
+  border-collapse: collapse;
+}
+
+::selection {
+  background-color: var(--surface-highest);
+  color: var(--c-text);
+}
+
+/* =====================================================================
+ * 2. Scanline overlay
+ *
+ * Decorative CRT texture. Three hard rules, all enforced here:
+ *
+ *   - 3% opacity, inside the 2-4% band. Any higher and it interferes with text
+ *     rendering rather than hinting at a CRT.
+ *   - `pointer-events: none`, so it can never swallow a click.
+ *   - It sits at z-index 1, and every content layer in section 2b is lifted above
+ *     it. Body text is therefore NEVER drawn under the scanlines; the texture is
+ *     only ever visible on the page background between panels.
+ * =================================================================== */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--c-text) 0,
+    var(--c-text) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* 2b. Lift real content above the overlay. */
+body > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* =====================================================================
+ * 3. Element defaults
+ * =================================================================== */
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 1em;
+}
+
+pre {
+  overflow-x: auto;
+  /* A preformatted block is a recessed well, not a raised panel. */
+  background-color: var(--surface-sunken);
+  color: var(--c-text);
+  padding: 1em 1.25em;
+  /* No ligatures inside code: `=>` and `!=` must read as what they are. */
+  font-variant-ligatures: none;
+}
+
+:not(pre) > code {
+  background-color: var(--surface-sunken);
+  padding: 0.15em 0.4em;
+  border-radius: 2px;
+}
+
+/* =====================================================================
+ * 4. Utilities
+ * =================================================================== */
+
+/* Uppercase ASCII labels, e.g. `## PROJECTS`. Tracking is safe here because these
+   never contain a box-drawing character. */
+.label {
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--c-text-muted);
+}
+
+/* Box-drawing runs. Ligatures off, so a row of ─ can never fuse into a rule,
+   and no letter-spacing, so the monospace grid survives. */
+.frames {
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  white-space: pre;
+}
+
+/* For content that is meaningful but not meant to be read inline, such as the
+   "skip to content" target or a status word next to a coloured dot. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 10;
+  padding: 0.5em 1em;
+  background-color: var(--surface-highest);
+  color: var(--c-text);
+  text-decoration: none;
+  transform: translateY(-150%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* =====================================================================
+ * 5. Focus
+ *
+ * `:focus-visible` only, so a mouse click never leaves a ring behind. The ring is
+ * a two-tone double border: the outer half is drawn in `--c-line-strong` so it is
+ * visible against a light panel, the inner half in `--c-focus` so it is visible
+ * against a dark page. Neither tone carries meaning on its own, and the ring is a
+ * shape change, not only a colour change.
+ * =================================================================== */
+
+:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* =====================================================================
+ * 6. Motion policy
+ *
+ * Everything that moves on this site is either the scanline drift or the blinking
+ * caret, plus the view-transition animations that Astro's ClientRouter generates.
+ * All three are neutralised here, and the block is last in the file so it wins on
+ * order against every declaration above it.
+ * =================================================================== */
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes scanline-drift {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 3px;
+  }
+}
+
+.caret {
+  color: var(--c-caret);
+  animation: caret-blink 1.1s steps(1, end) infinite;
+}
+
+body::before {
+  animation: scanline-drift 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Catch-all: nothing animates, nothing transitions, nothing smooth-scrolls. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Explicit kills, so the two named animations and the router's transitions
+     cannot survive on a more specific selector elsewhere. */
+  .caret,
+  body::before {
+    animation: none !important;
+  }
+
+  /* The view transitions are generated by Astro's ClientRouter, not by this
+     stylesheet, so they are disabled by name. */
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
