@@ -175,7 +175,12 @@ pre {
 
 pre {
   overflow-x: auto;
-  /* A preformatted block is a recessed well, not a raised panel. */
+  /* A preformatted block is a recessed well, not a raised panel.
+     These two values must stay equal to the Shiki theme's `editor.background` and
+     `editor.foreground` in `src/styles/shiki-theme.ts`. Shiki inlines those onto every
+     <pre> it renders and Shiki 4.4.3 has no way to suppress it, so for markdown code
+     the inline style wins; this rule is here so a hand-written <pre> matches it
+     instead of quietly disagreeing. */
   background-color: var(--surface-sunken);
   color: var(--c-text);
   padding: 1em 1.25em;

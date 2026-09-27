@@ -72,6 +72,56 @@ These are load-bearing. Changing one means revisiting every component that uses 
 - Focus is always visible via `:focus-visible`.
 - The scanline overlay is decorative, `pointer-events: none`, and never sits over body text.
 
+## Adding a project
+
+Create one file: `src/content/projects/<slug>.md`. Nothing else changes — no
+component edits, no imports, no registration. The slug is the filename, and it becomes
+the URL (`/projects/<slug>`).
+
+```yaml
+---
+title: Project Name
+summary: One line for the card. Max 180 characters.
+description: One or two sentences. Max 300. Used for meta and social cards.
+role: What you did on it, in your words. Not a job title.
+date: 2025-04-18
+status: active # active | maintenance | archived
+featured: false # featured projects lead the home page
+order: 100 # ascending; ties fall back to the date
+stack: [go, postgres]
+links:
+  - label: architecture notes
+    href: https://example.com/notes
+---
+```
+
+The markdown body is the case study. It renders in the unframed reading mode: no
+panel, a 66ch measure, `line-height: 1.75` and a font-size step up from the rest of the
+site.
+
+A missing or malformed field fails `astro build` with the collection name, the entry,
+the field and the file path — content errors surface at build time rather than
+rendering as `undefined`:
+
+```text
+InvalidContentEntryDataError  projects → zz-broken  data does not match collection schema.
+  description: Required
+  role: Required
+  date: Expected type "date", received "object"
+```
+
+## Code blocks
+
+Syntax highlighting is a Shiki theme generated from the same `@catppuccin/palette`
+Mocha colors as the design tokens, so a code block cannot drift away from the page
+around it. All fourteen token colors clear WCAG AA against the code surface.
+
+Shiki writes its background onto the `<pre>` as an inline style and Shiki 4.4.3 — the
+version Astro 7 resolves — has no `defaultColor` option to suppress that. The theme's
+`editor.background` is therefore `crust` and its `editor.foreground` is `text`, which
+are exactly `--surface-sunken` and `--c-text` in `global.css`. If you change one, change
+`mochaHex` so both move.
+
 ## Layout
 
 ```text
