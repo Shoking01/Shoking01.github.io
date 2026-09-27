@@ -1,0 +1,89 @@
+/*
+ * Semantic color layer.
+ *
+ * The raw `--ctp-*` custom properties are generated at build time by
+ * `src/styles/palette.ts` and injected once per page. This file is the hand-written
+ * layer that maps them onto jobs. Components never reference `--ctp-*` directly.
+ *
+ * CONTRAST — measured WCAG 2.1 ratios against the Mocha surfaces, not guessed:
+ *
+ *   foreground        base     surface0   surface1   surface2
+ *   text              11.34      8.69       6.31       4.62
+ *   subtext0           7.37      5.65       4.10       3.00
+ *   subtext1           9.26      7.10       5.15       3.77
+ *   overlay2           5.81      4.45       3.23       2.37
+ *   overlay1           4.44      3.40       2.47       1.81
+ *   overlay0           3.36      2.57       1.87       1.37
+ *
+ * Two consequences drive the naming below:
+ *
+ *   1. `overlay0` and `overlay1` both fail AA (4.5:1) even on `base`, so neither may
+ *      carry text. `overlay0` is used for decorative box frames and disabled state
+ *      only, where WCAG 1.4.3 does not apply.
+ *   2. `--c-text-muted` (`subtext0`) is only safe up to `surface0`. On `surface1` and
+ *      `surface2` it drops to 4.10 and 3.00, so raised surfaces must use `--c-text`
+ *      or `--c-text-soft` and never the muted ramp.
+ */
+
+:root {
+  /* ---------------------------------------------------------------------
+   * Elevation ramp. Depth comes from these six, never from box-shadow.
+   * ------------------------------------------------------------------ */
+
+  /* Recessed: code wells, inline code, terminal chrome. Darkest. */
+  --surface-sunken: var(--ctp-crust);
+
+  /* Recessed but not black: nav and footer chrome. */
+  --surface-chrome: var(--ctp-mantle);
+
+  /* The page itself. */
+  --surface-page: var(--ctp-base);
+
+  /* Cards, panels, project list items. The default raised surface. */
+  --surface-panel: var(--ctp-surface0);
+
+  /* Nested panels, hover states. */
+  --surface-raised: var(--ctp-surface1);
+
+  /* Highest elevation: pressed and active states. */
+  --surface-highest: var(--ctp-surface2);
+
+  /* ---------------------------------------------------------------------
+   * Text. See the contrast table above for what each one may sit on.
+   * ------------------------------------------------------------------ */
+
+  --c-text: var(--ctp-text);
+  --c-text-soft: var(--ctp-subtext1);
+  --c-text-muted: var(--ctp-subtext0);
+
+  /* ---------------------------------------------------------------------
+   * Accents. All clear AA on base, surface0 and surface1. `accent` and `link`
+   * are not safe on surface2 — that surface is reserved for `--c-text`.
+   * ------------------------------------------------------------------ */
+
+  --c-accent: var(--ctp-mauve);
+  --c-link: var(--ctp-blue);
+  --c-link-hover: var(--ctp-lavender);
+  --c-ok: var(--ctp-green);
+  --c-warn: var(--ctp-yellow);
+  --c-err: var(--ctp-red);
+
+  /* ---------------------------------------------------------------------
+   * Non-text decoration. These are NOT readable text colors.
+   * ------------------------------------------------------------------ */
+
+  /* Box-drawing frame characters and section rules. Decorative: 2.57:1 on a panel. */
+  --c-frame: var(--ctp-overlay0);
+
+  /* Faint interior dividers. 1.88:1 on a panel — separation only. */
+  --c-line-subtle: var(--ctp-surface2);
+
+  /* Borders that carry meaning, e.g. an active field. 5.65:1 on a panel. */
+  --c-line-strong: var(--ctp-subtext0);
+
+  /* Focus ring: 9.27:1 on base, 5.15:1 even on surface1. */
+  --c-focus: var(--ctp-peach);
+
+  /* Blinking caret. Paused under prefers-reduced-motion. */
+  --c-caret: var(--ctp-green);
+}

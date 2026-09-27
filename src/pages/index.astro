@@ -1,5 +1,8 @@
 ---
+import { paletteCss } from '../styles/palette'
+import '../styles/tokens.css'
 
+const palette = paletteCss()
 ---
 
 <html lang="en">
@@ -10,6 +13,7 @@
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Astro</title>
+		<style is:global set:html={palette} />
 	</head>
 	<body>
 		<h1>Astro</h1>
