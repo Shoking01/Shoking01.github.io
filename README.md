@@ -8,10 +8,34 @@ Personal portfolio site. Static Astro build with a terminal-UI (TUI) visual iden
 | --- | --- |
 | Framework | Astro (static output, no server runtime) |
 | Color | Catppuccin Mocha, emitted from `@catppuccin/palette` at build time |
-| Typeface | JetBrains Mono, self-hosted via `@fontsource-variable/jetbrains-mono` |
+| Typeface | JetBrains Mono, self-hosted. No external font request at runtime. |
 | Styling | Hand-written CSS. No Tailwind, no CSS framework. |
 | Content | Astro Content Collections (glob loader + Zod) |
 | Client JS | None by default. The only script shipped is Astro's view-transition router. |
+
+## Fonts
+
+Two `@font-face` rules, one family, disjoint character ranges. Both self-hosted, no
+CDN, no runtime request off the machine.
+
+| Face | Source | Covers |
+| :-- | :-- | :-- |
+| `JetBrains Mono Variable` 100-800 | `@fontsource-variable/jetbrains-mono`, latin subset | Latin text |
+| `JetBrains Mono Variable` 400 | vendored `src/assets/fonts/JetBrainsMono-Regular.woff2` | U+2500-257F box drawing, U+2580-259F block elements |
+
+The second face is not optional. `@fontsource-variable` is sliced from the
+`google/fonts` build of JetBrains Mono, and that build contains **zero** box-drawing
+glyphs — measured by decompressing the shipped `woff2` and reading its `cmap`. Every
+one of the six shipped subsets is missing the block. Without the vendored face, `╭ ─ ╮
+│ ╰ ╯` would fall back to whatever monospace font the OS has, which defeats the
+central visual decision of this site. The vendored file is byte-for-byte the official
+JetBrains v2.304 release build, and every glyph in it has a 600/1000 em advance width —
+identical to the Latin letterforms — so frames sit exactly on the monospace grid.
+
+Only the latin subset of the fontsource package is declared. The other five subsets
+can never match a character on an English-only site, and importing the package's entry
+CSS would ship them as dead files plus a base64 data URI in the critical-path CSS.
+
 
 ## Commands
 

@@ -1,0 +1,193 @@
+/*
+ * Typography: the type scale, the measure, and the two reading modes.
+ *
+ * JetBrains Mono is monospaced, which means the measure has to be counted in
+ * characters, not ems, and which means body text at UI sizes is fatiguing over a
+ * long read. That is why there are two modes below:
+ *
+ *   chrome  — nav, frames, cards, labels, code. Dense and small, like a real TUI.
+ *   prose   — case-study body copy. No frame, a wider measure in ch, a size bump,
+ *             and line-height 1.75. This is the mode the TUI shell exists to protect.
+ */
+
+/* The single typeface. The fallback stack exists only for the case where the webfont
+   has not loaded yet; `ui-monospace` first means the flash is another monospace face
+   rather than a proportional one. */
+:root {
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+
+  /* ---- Chrome scale -------------------------------------------------------
+     Small and dense. This is a terminal, not a document. */
+  --text-micro: 0.75rem; /* 12px — status prefixes, tags, table-of-contents rows */
+  --text-xs: 0.8125rem; /* 13px — ASCII decoration, footnotes */
+  --text-sm: 0.875rem; /* 14px — nav links, card metadata, inline code */
+  --text-base: 0.9375rem; /* 15px — TUI body copy, panel contents */
+  --text-lg: 1.0625rem; /* 17px — section headings, card titles */
+  --text-xl: 1.375rem; /* 22px — page title */
+  --text-2xl: 1.75rem; /* 28px — hero line */
+
+  /* ---- Prose scale --------------------------------------------------------
+     The same typeface, opened up. */
+  --text-prose: 1.0625rem; /* 17px */
+  --text-prose-lead: 1.1875rem; /* 19px — the opening paragraph */
+
+  /* ---- Measures -----------------------------------------------------------
+     In `ch`, because the advance width is fixed and `ch` is therefore the real
+     character count. 66ch of this font is about 66 characters per line. */
+  --measure-prose: 66ch;
+  --measure-lede: 58ch;
+
+  /* ---- Line height -------------------------------------------------------- */
+  --leading-chrome: 1.5;
+  --leading-prose: 1.75; /* TUI is the shell; this is what makes reading inside it work. */
+
+  --tracking-label: 0.08em; /* uppercase ASCII labels only, never a frame */
+}
+
+html {
+  font-family: var(--font-mono);
+  font-size: 100%;
+  /* The Latin face is a real variable font with a full 100-800 axis, so nothing needs
+     synthesising. Forbidding synthesis also stops the browser faux-bolding the
+     box-drawing face, which would turn a hairline ─ into a smear. */
+  font-synthesis: none;
+  font-variant-ligatures: contextual;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* -----------------------------------------------------------------------
+ * Chrome. Dense by default.
+ * -------------------------------------------------------------------- */
+body {
+  font-size: var(--text-base);
+  line-height: var(--leading-chrome);
+}
+
+/* -----------------------------------------------------------------------
+ * Prose. The reading mode.
+ *
+ * This is the one place the frame comes off. Monospace body text at 15px with
+ * 1.5 leading is fine for a card summary and miserable for 800 words, so prose
+ * steps up in size, opens the leading, and holds a narrower measure in ch.
+ * -------------------------------------------------------------------- */
+.prose {
+  font-size: var(--text-prose);
+  line-height: var(--leading-prose);
+  max-width: var(--measure-prose);
+  /* Ligatures are a code affordance. In running text they fuse shapes the eye
+     is using to separate words. */
+  font-variant-ligatures: none;
+}
+
+.prose > * + * {
+  margin-block-start: 1.25em;
+}
+
+.prose p {
+  max-width: var(--measure-prose);
+}
+
+/* The opening paragraph gets its own step and a slightly tighter measure. */
+.prose .lede,
+.prose > p:first-of-type {
+  font-size: var(--text-prose-lead);
+  line-height: 1.65;
+  max-width: var(--measure-lede);
+  color: var(--c-text-soft);
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  line-height: 1.3;
+  /* Headings sit outside the measure so they can be longer without the body
+     text following them into a wide, hard-to-track line. */
+  max-width: var(--measure-prose);
+  margin-block-start: 2.25em;
+  margin-block-end: 0.75em;
+}
+
+.prose h2 {
+  font-size: var(--text-lg);
+}
+
+.prose h3 {
+  font-size: var(--text-base);
+}
+
+.prose h4 {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+}
+
+.prose ul,
+.prose ol {
+  padding-inline-start: 1.5em;
+}
+
+.prose li + li {
+  margin-block-start: 0.4em;
+}
+
+.prose li::marker {
+  color: var(--c-accent);
+}
+
+/* Links inside prose are underlined, not just recolored, so the affordance does
+   not depend on hue alone. */
+.prose a {
+  color: var(--c-link);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+.prose a:hover {
+  color: var(--c-link-hover);
+}
+
+.prose strong {
+  color: var(--c-text);
+  font-weight: 700;
+}
+
+.prose blockquote {
+  border-inline-start: 2px solid var(--c-line);
+  padding-inline-start: 1em;
+  color: var(--c-text-soft);
+}
+
+.prose hr {
+  border: 0;
+  border-block-start: 1px solid var(--c-line-subtle);
+  margin-block: 2.5em;
+}
+
+.prose code {
+  font-size: 0.9375em; /* relative, so it tracks the prose size instead of the chrome size */
+}
+
+/* Prose is never framed. The panel that contains a case study stops being a
+   panel — the TUI is the shell, and the shell ends where the reading starts. */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.prose th,
+.prose td {
+  text-align: start;
+  padding: 0.5em 0.75em;
+  border-block-end: 1px solid var(--c-line-subtle);
+}
+
+.prose th {
+  color: var(--c-text-soft);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  font-size: var(--text-micro);
+}

@@ -1,6 +1,8 @@
 ---
 import { paletteCss } from '../styles/palette'
+import '../styles/fonts.css'
 import '../styles/tokens.css'
+import '../styles/typography.css'
 
 const palette = paletteCss()
 ---
@@ -17,5 +19,9 @@ const palette = paletteCss()
 	</head>
 	<body>
 		<h1>Astro</h1>
+		<p class="prose">Prose mode, for checking the measure and the leading.</p>
+		<pre aria-hidden="true">╭───────────────╮
+│ rounded frame │
+╰───────────────╯</pre>
 	</body>
 </html>

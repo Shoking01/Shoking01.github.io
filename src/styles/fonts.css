@@ -1,0 +1,67 @@
+/*
+ * Self-hosted JetBrains Mono. No runtime request to any external font CDN.
+ *
+ * Two faces, same family, disjoint character ranges. Everything the site can render
+ * is covered by exactly these two.
+ */
+
+/*
+ * 1. The Latin text face — the variable font, weights 100-800, from
+ *    @fontsource-variable/jetbrains-mono (OFL-1.1).
+ *
+ *    Declared here rather than via `@import '@fontsource-variable/jetbrains-mono'`
+ *    on purpose. That package's entry CSS declares all six of its subsets, and five of
+ *    them (cyrillic, cyrillic-ext, greek, vietnamese, and most of latin-ext) can never
+ *    match a character on an English-only site. The browser will not download them
+ *    thanks to `unicode-range`, but they still ship as dead files in `dist/_astro` and
+ *    push a base64 data URI into the critical-path CSS. Declaring the one subset in use
+ *    keeps the output to two font files and zero inline data.
+ */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
+ * 2. The Box Drawing and Block Elements face.
+ *
+ * WHY THIS EXISTS — this is not redundancy, it is a coverage gap that was measured
+ * rather than assumed. @fontsource-variable is sliced from the google/fonts build of
+ * JetBrains Mono, whose cmap contains 229 code points and NOT ONE glyph from
+ * U+2500-257F (Box Drawing) or U+2580-259F (Block Elements). Verified by decompressing
+ * the shipped woff2 and reading its cmap table. The same holds for all six shipped
+ * subsets (cyrillic, cyrillic-ext, greek, latin, latin-ext, vietnamese) — all six were
+ * checked, all six are missing the block.
+ *
+ * Those two blocks are the entire visual identity of this site. Left uncovered, every
+ * frame character silently falls back to whatever monospace font the operating system
+ * happens to have, with unknown metrics and no guarantee that ╭ ╮ ╯ ╰ are rounded at
+ * all. A panel drawn in a fallback font is exactly the failure this design forbids.
+ *
+ * This file is JetBrains Mono Regular, taken byte-for-byte from the official JetBrains
+ * release (v2.304, OFL-1.1) and vendored into the repo so builds stay offline and
+ * reproducible. It is scoped by `unicode-range` to the two missing blocks and nothing
+ * else, so it can never be used to render prose.
+ *
+ *   sha256 a9cb1cd82332b23a47e3a1239d25d13c86d16c4220695e34b243effa999f45f2
+ *   size   92164 bytes
+ *
+ * Every glyph in this file has a 600/1000 em advance width, identical to the Latin
+ * letterforms, so a frame built from these characters sits exactly on the monospace
+ * grid. Weight is pinned at 400 deliberately: a TUI frame should not fatten when the
+ * text inside it goes bold.
+ */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../assets/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  unicode-range: U+2500-257F, U+2580-259F;
+}
