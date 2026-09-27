@@ -1,22 +1,32 @@
 ---
-import { paletteCss } from '../styles/palette'
-import '../styles/fonts.css'
-import '../styles/tokens.css'
-import '../styles/typography.css'
-import '../styles/global.css'
-
-const palette = paletteCss()
+import BaseLayout from '../layouts/BaseLayout.astro'
+import Panel from '../components/Panel.astro'
+import AsciiRule from '../components/AsciiRule.astro'
+import { site } from '../site.config'
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>Portfolio</title>
-		<style is:global set:html={palette} />
-	</head>
-	<body>
-		<!-- Replaced by the real home page in T8. -->
-		<p class="label">scaffold</p>
-	</body>
-</html>
+<BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
+  <Panel>
+    <h1 class="hero__name">{site.name}</h1>
+    <p class="hero__role">{site.role}</p>
+  </Panel>
+
+  <AsciiRule label="about" />
+
+  <Panel>
+    <p>{site.tagline}</p>
+  </Panel>
+</BaseLayout>
+
+<style>
+  .hero__name {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--c-text);
+  }
+
+  .hero__role {
+    color: var(--c-text-soft);
+  }
+</style>

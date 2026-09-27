@@ -1,0 +1,118 @@
+---
+import Panel from './Panel.astro'
+import { site } from '../site.config'
+
+/**
+ * The nav is one framed row: identity on the left, destinations on the right, the
+ * active one marked by more than colour. `aria-current="page"` carries the state for
+ * assistive tech, and the `>` marker plus the weight change carry it visually, so the
+ * answer to "where am I" never depends on hue alone.
+ */
+
+const links = [
+  { label: 'home', href: '/' },
+  { label: 'projects', href: '/#projects' },
+]
+
+const current = Astro.url.pathname
+const isActive = (href: string) =>
+  href === '/' ? current === '/' : current.startsWith(href.split('#')[0]!) && href !== '/#projects'
+---
+
+<Panel surface="chrome" class="nav">
+  <nav class="nav__row" aria-label="Primary">
+    <a class="nav__brand" href="/">
+      <span class="nav__prompt" aria-hidden="true">{site.name.split(/\s+/)[0]}@</span><span
+        class="nav__host"
+        >portfolio</span
+      ><span class="caret" aria-hidden="true">█</span>
+    </a>
+
+    <ul class="nav__links">
+      {
+        links.map((link) => {
+          const active = isActive(link.href)
+          return (
+            <li>
+              <a
+                class="nav__link"
+                href={link.href}
+                aria-current={active ? 'page' : undefined}
+                data-active={active ? 'true' : undefined}
+              >
+                {active && <span class="nav__marker" aria-hidden="true">&gt;</span>}
+                {link.label}
+              </a>
+            </li>
+          )
+        })
+      }
+    </ul>
+  </nav>
+</Panel>
+
+<style>
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+
+  .nav__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5ch 2ch;
+  }
+
+  .nav__brand {
+    color: var(--c-text);
+    text-decoration: none;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .nav__prompt {
+    color: var(--c-accent);
+  }
+
+  .nav__host {
+    color: var(--c-text-soft);
+    font-weight: 400;
+  }
+
+  /* The caret blinks, and global.css turns it off under prefers-reduced-motion. It is
+     decorative; the brand text beside it carries the meaning. */
+  .nav__brand .caret {
+    margin-inline-start: 0.25ch;
+  }
+
+  .nav__links {
+    display: flex;
+    gap: 2ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nav__link {
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .nav__link:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+
+  .nav__link[aria-current] {
+    color: var(--c-text);
+    font-weight: 700;
+  }
+
+  .nav__marker {
+    color: var(--c-accent);
+    margin-inline-end: 0.25ch;
+  }
+</style>

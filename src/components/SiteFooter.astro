@@ -1,0 +1,81 @@
+---
+import Panel from './Panel.astro'
+import { site } from '../site.config'
+
+/**
+ * The footer is a framed status line. It sits on `crust`, the darkest rung of the
+ * elevation ramp, which is what a terminal prompt does: chrome recedes, content sits
+ * forward.
+ */
+
+const year = new Date().getFullYear()
+const links = site.links.filter((link) => link.href.length > 0)
+---
+
+<Panel surface="sunken" class="footer">
+  <div class="footer__row">
+    <p class="footer__line">
+      <span class="footer__prompt" aria-hidden="true">~/portfolio</span>
+      <span class="footer__sep" aria-hidden="true">│</span>
+      <span>© {year} {site.name}</span>
+    </p>
+
+    {
+      links.length > 0 && (
+        <ul class="footer__links" aria-label="Elsewhere">
+          {links.map((link) => (
+            <li>
+              <a class="footer__link" href={link.href} rel="me noopener">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</Panel>
+
+<style>
+  .footer {
+    margin-block-start: auto;
+  }
+
+  .footer__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5ch 2ch;
+    font-size: var(--text-sm);
+  }
+
+  .footer__prompt {
+    color: var(--c-text-soft);
+  }
+
+  /* A `│` from the box-drawing face, used as a separator inside a line of text. */
+  .footer__sep {
+    color: var(--c-frame);
+    margin-inline: 0.5ch;
+  }
+
+  .footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer__link {
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .footer__link:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+</style>

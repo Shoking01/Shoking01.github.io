@@ -1,0 +1,105 @@
+---
+import { ClientRouter } from 'astro:transitions'
+
+import { paletteCss } from '../styles/palette'
+import '../styles/fonts.css'
+import '../styles/tokens.css'
+import '../styles/typography.css'
+import '../styles/global.css'
+
+import SiteNav from '../components/SiteNav.astro'
+import SiteFooter from '../components/SiteFooter.astro'
+import { site } from '../site.config'
+
+/**
+ * The shell. Nav, main, footer, skip link, and the one script the site ships.
+ *
+ * `ClientRouter` is the only client-side JavaScript here. It is not an island and it
+ * is not a framework: it is Astro's view-transition router, and it is the reason
+ * navigating between the home page and a project does a cross-fade instead of a full
+ * page load. Everything else on this site is static HTML and CSS.
+ *
+ * The palette is generated here rather than in a stylesheet because it comes from a
+ * Node import. Custom properties resolve at computed-value time, so `tokens.css` can
+ * alias `--ctp-*` regardless of the order these two end up in.
+ */
+
+interface Props {
+  title: string
+  description: string
+  /** Renders the hero-sized title treatment instead of the compact one. */
+  wide?: boolean
+}
+
+const { title, description, wide = false } = Astro.props
+
+const palette = paletteCss()
+const canonical = new URL(Astro.url.pathname, site.url).href
+---
+
+<!doctype html>
+<html lang={site.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <ClientRouter />
+
+    <style is:global set:html={palette} />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class:list={['shell', wide && 'shell--wide']}>
+      <SiteNav />
+
+      <main id="main" class="shell__main" tabindex="-1">
+        <slot />
+      </main>
+
+      <SiteFooter />
+    </div>
+  </body>
+</html>
+
+<style>
+  /* One width for the whole shell, measured in character cells, so the nav, the main
+     column and the footer all start and end on the same column of the grid. This is
+     the same `ch` unit `Panel` measures its frame in. */
+  .shell {
+    --shell-cols: 76;
+    display: flex;
+    flex-direction: column;
+    gap: 2ch;
+    width: min(calc(var(--shell-cols) * 1ch), 100% - 2rem);
+    margin-inline: auto;
+    min-height: 100svh;
+    padding-block: 1.5ch 2ch;
+  }
+
+  /* The reading column. A case study drops its frame, so it also drops the shell's
+     fixed width and holds a measure in `ch` instead. */
+  .shell--wide {
+    --shell-cols: 88;
+  }
+
+  .shell__main {
+    flex: 1 0 auto;
+    min-width: 0;
+    padding-block: 1ch;
+  }
+
+  .shell__main:focus {
+    outline: none;
+  }
+</style>

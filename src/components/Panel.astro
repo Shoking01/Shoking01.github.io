@@ -29,7 +29,7 @@
  */
 
 interface Props {
-  /** Frame width in character cells. */
+  /** Frame width in character cells. Omit for a panel that fills its container. */
   cols?: number
   /**
    * How far the vertical rails are allowed to run. The chain is clipped by the panel
@@ -43,21 +43,25 @@ interface Props {
 }
 
 const {
-  cols = 64,
+  cols,
   rows = 64,
   surface = 'panel',
   class: className,
   id,
 } = Astro.props
 
-// One cell is consumed by each corner. The rails fill what is left.
-const rail = '\u2500'.repeat(Math.max(cols - 2, 1))
+// With a known width the rails are exactly the right length. Without one they are a
+// long run that the flex-free clipping in CSS trims to whatever the container is.
+// Either way the visible result is one unbroken line: a `─` overhangs its cell by
+// 20 units on each side, so a partial glyph is a shorter rule, never a gap.
+const railLength = cols ? Math.max(cols - 2, 1) : 256
+const rail = '\u2500'.repeat(railLength)
 const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
 ---
 
 <div
-  class:list={['panel', `panel--${surface}`, className]}
-  style={`--cols:${cols};`}
+  class:list={['panel', `panel--${surface}`, !cols && 'panel--fluid', className]}
+  style={cols ? `--cols:${cols};` : undefined}
   id={id}
 >
   <span class="panel__corner panel__corner--tl" aria-hidden="true">╭</span>
@@ -86,10 +90,16 @@ const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
     grid-template-columns: 1ch minmax(0, 1fr) 1ch;
     grid-template-rows: auto auto auto;
     width: 100%;
-    max-width: min(calc(var(--cols) * 1ch), 100%);
+    max-width: 100%;
     color: var(--c-frame);
     font-variant-ligatures: none;
     letter-spacing: normal;
+  }
+
+  /* A panel with no `cols` fills its container, which is what the nav, the footer and
+     the main column want so the whole shell shares one width. */
+  .panel:not(.panel--fluid) {
+    max-width: min(calc(var(--cols) * 1ch), 100%);
   }
 
   .panel--page {
