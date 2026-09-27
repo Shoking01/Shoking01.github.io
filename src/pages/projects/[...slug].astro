@@ -1,0 +1,264 @@
+---
+import type { CollectionEntry } from 'astro:content'
+import { getCollection, render } from 'astro:content'
+
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import Panel from '../../components/Panel.astro'
+import StatusTag from '../../components/StatusTag.astro'
+import { site } from '../../site.config'
+
+/**
+ * A case study. The frame comes off.
+ *
+ * The page is split in two, and the split is the whole point of the TUI-shell pattern:
+ *
+ *   chrome  framed panel, dense, 15px, the metadata you navigate by
+ *   prose   no frame, 17px, line-height 1.75, a 66ch measure
+ *
+ * Everything before the article is chrome and stays framed. Everything inside
+ * `<article class="prose">` is reading and has no frame at all — not a border, not a
+ * background step, nothing. Monospace body text at 15px with 1.5 leading is fine for a
+ * card summary and genuinely tiring across 800 words, and a panel around it would
+ * make that worse, not better, by narrowing the measure further.
+ *
+ * The `wide` layout widens the shell so the reading column has room to sit at its own
+ * measure without being pushed against the edge.
+ */
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects')
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }))
+}
+
+interface Props {
+  project: CollectionEntry<'projects'>
+}
+
+const { project } = Astro.props
+const { Content, headings } = await render(project)
+
+const { title, description, date, role, status, stack, links, summary } = project.data
+const iso = date.toISOString().slice(0, 10)
+const year = date.getUTCFullYear()
+
+// Only the section headings, and only ones with a real slug to link to.
+const sections = headings.filter((h) => h.depth === 2 && h.slug)
+---
+
+<BaseLayout title={`${title} — ${site.name}`} description={description} wide>
+  <Panel class="case__header">
+    <nav class="case__crumb" aria-label="Breadcrumb">
+      <a class="case__crumb-link" href="/">~/</a>
+      <span class="case__crumb-sep" aria-hidden="true">/</span>
+      <a class="case__crumb-link" href="/#projects">projects</a>
+      <span class="case__crumb-sep" aria-hidden="true">/</span>
+      <span class="case__crumb-here" aria-current="page">{title}</span>
+    </nav>
+
+    <div class="case__title-row">
+      <h1 class="case__title">{title}</h1>
+      <StatusTag status={status} />
+    </div>
+
+    <p class="case__summary">{summary}</p>
+
+    <dl class="case__meta">
+      <div class="case__meta-pair">
+        <dt class="label">year</dt>
+        <dd><time datetime={iso}>{year}</time></dd>
+      </div>
+      <div class="case__meta-pair">
+        <dt class="label">role</dt>
+        <dd>{role}</dd>
+      </div>
+    </dl>
+
+    {
+      stack.length > 0 && (
+        <ul class="case__stack" aria-label="Stack">
+          {stack.map((item) => (
+            <li class="case__tech">{item}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      links.length > 0 && (
+        <ul class="case__links">
+          {links.map((link) => (
+            <li>
+              <a class="case__link" href={link.href} rel="noopener">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      sections.length > 1 && (
+        <nav class="case__toc" aria-label="Contents">
+          <p class="label">contents</p>
+          <ol class="case__toc-list">
+            {sections.map((section) => (
+              <li>
+                <a class="case__toc-link" href={`#${section.slug}`}>
+                  {section.text}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )
+    }
+  </Panel>
+
+  <article class="prose">
+    <Content />
+  </article>
+
+  <Panel class="case__footer">
+    <a class="case__back" href="/#projects">&gt; all projects</a>
+  </Panel>
+</BaseLayout>
+
+<style>
+  .case__crumb {
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+    margin-block-end: 0.75em;
+  }
+
+  .case__crumb-link {
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .case__crumb-link:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+
+  .case__crumb-sep {
+    color: var(--c-frame);
+    padding-inline: 0.35ch;
+  }
+
+  .case__crumb-here {
+    color: var(--c-text);
+  }
+
+  .case__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25em 2ch;
+  }
+
+  .case__title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .case__summary {
+    margin-block-start: 0.6em;
+    color: var(--c-text-soft);
+    max-width: var(--measure-lede);
+  }
+
+  .case__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 3ch;
+    margin-block-start: 1em;
+  }
+
+  .case__meta-pair {
+    display: grid;
+    gap: 0.15em;
+  }
+
+  .case__meta-pair dd {
+    margin: 0;
+    color: var(--c-text-soft);
+    max-width: 52ch;
+  }
+
+  .case__stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5ch;
+    margin-block-start: 1em;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+  }
+
+  .case__tech::before {
+    content: '#';
+    color: var(--c-line);
+  }
+
+  .case__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2ch;
+    margin-block-start: 1em;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  .case__link {
+    color: var(--c-text-soft);
+  }
+
+  .case__link:hover {
+    color: var(--c-link-hover);
+  }
+
+  .case__toc {
+    margin-block-start: 1.2em;
+    padding-block-start: 1em;
+    border-block-start: 1px solid var(--c-line-subtle);
+  }
+
+  .case__toc-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 2ch;
+    margin: 0.5em 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  .case__toc-link {
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .case__toc-link:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+
+  .case__back {
+    font-size: var(--text-sm);
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .case__back:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+</style>

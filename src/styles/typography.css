@@ -104,22 +104,48 @@ body {
   /* Headings sit outside the measure so they can be longer without the body
      text following them into a wide, hard-to-track line. */
   max-width: var(--measure-prose);
-  margin-block-start: 2.25em;
-  margin-block-end: 0.75em;
 }
 
 .prose h2 {
-  font-size: var(--text-lg);
+  /* A section break, in TUI grammar: a rule, a gap, and an uppercase tracked label.
+     The size step up is real (22px against a 17px body) but it is not doing the work
+     alone — case, weight, tracking and the rule are what make a heading a heading, so
+     the hierarchy survives a monochrome display and a zoomed-out view. */
+  font-size: var(--text-xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--c-text);
+  border-block-start: 1px solid var(--c-line-subtle);
+  padding-block-start: 1.4em;
+  margin-block: 2.6em 0.9em;
+}
+
+/* The first heading should not carry a rule with nothing above it to separate from. */
+.prose > h2:first-child,
+.prose > :first-child + h2 {
+  border-block-start: 0;
+  padding-block-start: 0;
+  margin-block-start: 0;
 }
 
 .prose h3 {
-  font-size: var(--text-base);
+  /* Deliberately not uppercase: h3 sits inside a section, and shouting there would
+     flatten the difference between a section and a subsection. */
+  font-size: var(--text-prose);
+  font-weight: 700;
+  color: var(--c-text);
+  margin-block-start: 1.9em;
+  margin-block-end: 0.6em;
 }
 
 .prose h4 {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
+  color: var(--c-text-muted);
+  margin-block-start: 1.6em;
+  margin-block-end: 0.5em;
 }
 
 .prose ul,
