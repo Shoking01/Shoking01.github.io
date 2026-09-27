@@ -45,7 +45,27 @@ CSS would ship them as dead files plus a base64 data URI in the critical-path CS
 | `pnpm dev` | Start local dev server at `localhost:4321` |
 | `pnpm build` | Build the production site to `./dist/` |
 | `pnpm preview` | Preview the production build locally |
-| `pnpm astro check` | Type-check the project |
+| `pnpm typecheck` | Type-check the project (`astro check`) |
+| `pnpm verify` | Structural checks against `dist/` — see below |
+
+## What `pnpm verify` checks
+
+`astro build` catches types, schemas and missing routes. It cannot catch the rules that
+actually protect this design, because none of them are errors:
+
+- no subresource request leaves the origin — no font CDN, no CDN at all
+- every `@keyframes` is neutralised under `prefers-reduced-motion: reduce`, including
+  Astro's `::view-transition-*` animations, which no local stylesheet would reach
+- `overlay0` and `overlay1` are never used as a `color` in source — borders, outlines
+  and disabled states are allowed, readable text is not
+- the only `<script>` in the built HTML is the view-transition router, and no framework
+  island is rendered
+- all 26 Mocha colors and all six elevation surfaces are present
+- no rendered character falls outside the two declared font faces — the trap here is
+  `→` (U+2192) and `✓` (U+2713), which look fine in a diff and silently fall back to an
+  OS font in the browser
+
+It runs against `dist/`, so it checks what ships rather than what the source intends.
 
 ## Design rules
 

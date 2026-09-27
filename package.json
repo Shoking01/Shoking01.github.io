@@ -11,6 +11,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check",
+    "verify": "node scripts/verify-structure.mjs",
     "astro": "astro"
   },
   "dependencies": {
