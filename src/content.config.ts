@@ -66,4 +66,90 @@ const projects = defineCollection({
   }),
 })
 
-export const collections = { projects }
+/**
+ * Experience content.
+ *
+ * The same contract as `projects`: adding a job means creating exactly one markdown
+ * file in `src/content/experience/` and changing nothing else. Entries here have no
+ * route of their own, because a CV is a list and a list is a section on a page rather
+ * than a page per row.
+ *
+ * The entries are frontmatter only. The body is never rendered, and nothing in the
+ * schema would make it render, so a role is described entirely by the fields below and
+ * an empty file is a complete entry. `projects` needs a body because a case study is
+ * prose; a job is not.
+ *
+ * Three fields exist because chronology is the one thing a CV collection has to model
+ * carefully, and all three are about not claiming more than the source states.
+ *
+ *   - `current` is an assertion, not an inference. An ongoing role sets it to `true` and
+ *     omits `end`; the refinement below fails the build for a closed role with no `end`.
+ *     The safe direction is deliberate: a forgotten `end` cannot quietly claim the owner
+ *     still works somewhere, and a forgotten `current` fails loudly instead of rendering
+ *     a role that closed years ago as still open.
+ *   - `granularity` records whether the source dated the role by month or by year.
+ *     `z.coerce.date()` cannot tell `2025` from `2025-01-01` ÔÇö both arrive as the first
+ *     of the month ÔÇö so rendering "Jan 2025" for a year the owner only ever said "2025"
+ *     would state a precision the content does not have. Month is the default because it
+ *     is the finer of the two, and a wrong month is a smaller error than a wrong year.
+ *   - `summary` is optional, unlike `projects.summary`. A CV states what was done rather
+ *     than what the job was, so there is no honest one-liner to write for a role whose
+ *     only source is its bullet points. The cap is still the same 180 characters, so the
+ *     two collections agree on what "one line" means.
+ *
+ * Note for authors: quote the `highlights` strings. A bullet like
+ * `Bug Triage: Isolated complex code defects` is a YAML mapping, not a string, the moment
+ * it is unquoted, and the schema error then names the wrong field.
+ */
+const experience = defineCollection({
+  loader: glob({ base: './src/content/experience', pattern: '**/*.md' }),
+  schema: z
+    .object({
+      /** Employer, as it should be displayed. */
+      company: z.string().min(1),
+
+      /** The job title. Rendered as the row heading, so it is the entry's subject. */
+      role: z.string().min(1),
+
+      /** City and country, or `Remote`. */
+      location: z.string().min(1),
+
+      /**
+       * Whether the role was remote. Rendered as a word, never as a colour, because
+       * "remote" is a fact about the job and a hue is not a fact.
+       */
+      remote: z.boolean().default(false),
+
+      /** Start of the role. Coerced, so `2025-10` and `2025-10-06` both work. */
+      start: z.coerce.date(),
+
+      /** End of the role. Omitted while the role is current. Checked below. */
+      end: z.coerce.date().optional(),
+
+      /** Ongoing role. See the note above on why this is a flag and not an empty end. */
+      current: z.boolean().default(false),
+
+      /** How precisely the source dates this role. `year` suppresses the month. */
+      granularity: z.enum(['month', 'year']).default('month'),
+
+      /** One line for the row, when the source states one. See the note above. */
+      summary: z.string().min(1).max(180).optional(),
+
+      /** What was done, one bullet per string. At least one, or it is not a role yet. */
+      highlights: z.array(z.string().min(1)).min(1),
+
+      /** Tools and technologies, as they should be displayed. */
+      stack: z.array(z.string()).default([]),
+    })
+    .superRefine((value, ctx) => {
+      if (!value.current && !value.end) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['end'],
+          message: 'Required unless `current` is true. An ongoing role sets `current: true`.',
+        })
+      }
+    }),
+})
+
+export const collections = { projects, experience }

@@ -130,6 +130,44 @@ InvalidContentEntryDataError  projects → zz-broken  data does not match collec
   date: Expected type "date", received "object"
 ```
 
+## Adding a job
+
+Create one file: `src/content/experience/<company-slug>.md`. Nothing else changes. Jobs
+have no route of their own — they are a section of `/about`, rendered newest first by
+`start` — and the entry is frontmatter only, with no case study to write.
+
+```yaml
+---
+company: Company Name
+role: Job Title # the row heading
+location: City, Country # or Remote
+remote: false
+start: 2025-10 # coerced, so 2025-10 and 2025-10-06 both work
+end: 2026-01 # omit for an ongoing role
+current: false # true means ongoing; asserted, never inferred
+granularity: month # month | year, defaults to month
+summary: Optional one line, max 180 characters
+highlights:
+  - "Label: What was actually done, in the owner's words."
+stack: [react, sql]
+---
+```
+
+Three of those fields exist to stop the page claiming more than the source:
+
+- **`current` is a flag, not an empty `end`.** An ongoing role sets `current: true` and
+  omits `end`. A closed role with no `end` fails `astro build`, so forgetting the field
+  cannot quietly turn a role that ended years ago into one that is still open.
+- **`granularity` records the source's precision.** `z.coerce.date()` turns both `2025`
+  and `2025-01-01` into the first of January, so a role the CV dated by year would
+  otherwise render as "Jan 2025" — a month nobody ever claimed.
+- **`summary` is optional.** A CV states what was done, not what the job was, and there
+  is no honest one-liner to write from bullet points alone. The cap matches
+  `projects.summary` so the two collections agree on what "one line" means.
+
+Quote the `highlights` strings. Each one contains a colon, and an unquoted
+`Bug Triage: Isolated complex code defects` is a YAML mapping, not a string.
+
 ## Code blocks
 
 Syntax highlighting is a Shiki theme generated from the same `@catppuccin/palette`
@@ -172,9 +210,12 @@ To close it: drop a 1200×630 image at `public/og.png` and add
 
 ```text
 src/
+  content.config.ts      Content collection schemas (Zod)
   content/
-    config.ts            Content collection schemas (Zod)
     projects/            One markdown file per project
+    experience/          One markdown file per job
+  data/
+    skills.ts            Skill taxonomy. Typed data, deliberately not a collection
   layouts/
     BaseLayout.astro     <head>, nav, footer, skip link
   components/
@@ -188,6 +229,7 @@ src/
     global.css           Reset, base styles, focus, reduced motion
   pages/
     index.astro          Home
+    about.astro          Experience and Skills
     projects/[...slug].astro   Project detail
 ```
 
