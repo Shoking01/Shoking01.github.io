@@ -366,7 +366,14 @@ const now =
   /* Three tracks, not a sentence with a `│` in it. That is the whole trick behind the
      wrapped continuation: the text is its own grid item, so when it wraps at the
      measure, the second line starts under the FIRST CHARACTER of the text instead of
-     under the label. A `│` between two inline spans would wrap to column zero. */
+     under the label. A `│` between two inline spans would wrap to column zero.
+
+     `--measure-prose` here is 66 characters OF THIS LINE'S OWN SIZE, not 66 characters
+     of prose: `ch` resolves against the element, and this line is 14px, so the cap is
+     541px rather than the 773px the 20px column gets. That is the right answer for a
+     chrome line — a 14px sentence running the full width of a 773px column is 100
+     characters and unreadable — and it is stated here because "66ch" reads like a
+     promise about the prose measure and is not one on this element. */
   .now {
     display: grid;
     grid-template-columns: max-content max-content minmax(0, 1fr);

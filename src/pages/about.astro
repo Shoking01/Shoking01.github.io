@@ -346,6 +346,13 @@ const languages = 'Spanish native, English professional working proficiency (B2+
      they did, and at 20px it is three or four lines of a column rather than a fragment
      on one line, so this is the page's reading mode and not a list of chrome.
 
+     The font size is declared HERE, on the element that carries the measure, and not on
+     the items. `ch` resolves against the element's OWN font size, so a `66ch` max-width
+     on a list that is still inheriting the 15px chrome size is 580px — and 580px of 20px
+     text is 48 characters, not the 66 the measure means. Declaring the size one level up
+     makes the measure and the text it measures the same declaration, so the two cannot
+     drift apart, and the items below inherit it.
+
      Two columns, marker then text, for the same reason the `currently` line on the home
      page has three: a wrapped line has to start under the FIRST CHARACTER of the text,
      not under the marker. An inline `*` inside a paragraph would put the second line
@@ -360,13 +367,13 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     margin-block-start: 1em;
     padding-inline-start: 2ch;
     list-style: none;
+    font-size: var(--text-prose);
   }
 
   .role__highlight {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     gap: 0 0.5ch;
-    font-size: var(--text-prose);
     line-height: 1.6;
   }
 
