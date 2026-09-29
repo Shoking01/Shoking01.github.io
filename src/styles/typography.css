@@ -5,9 +5,18 @@
  * characters, not ems, and which means body text at UI sizes is fatiguing over a
  * long read. That is why there are two modes below:
  *
- *   chrome  — nav, frames, cards, labels, code. Dense and small, like a real TUI.
- *   prose   — case-study body copy. No frame, a wider measure in ch, a size bump,
- *             and line-height 1.75. This is the mode the TUI shell exists to protect.
+ *   chrome  — nav, frames, cards, labels, metadata, code. Dense and small.
+ *   prose   — every sentence a reader is expected to actually read. No frame, a
+ *             measure in ch, a size bump, and line-height 1.75.
+ *
+ * THE TWO SCALES DO NOT SCALE TOGETHER, on purpose. Chrome stayed where it was —
+ * nav, labels and metadata are read, not studied, and 12-15px monospace is
+ * comfortable for that — while prose went 17px to 20px. The gap between them widened
+ * from 2px to 5px on purpose: a uniform scale-up would have enlarged the labels
+ * along with the body and left the page exactly as dense as it was.
+ *
+ * The consequence of moving prose alone is arithmetic, not taste, and it is derived
+ * at the measure below.
  */
 
 /* The single typeface. The fallback stack exists only for the case where the webfont
@@ -17,23 +26,69 @@
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
 
   /* ---- Chrome scale -------------------------------------------------------
-     Small and dense. This is a terminal, not a document. */
-  --text-micro: 0.75rem; /* 12px — status prefixes, tags, table-of-contents rows */
+     Unchanged by the scale-up, deliberately. 1ch is measured at `--text-base`
+     because that is the font size the whole shell's character grid is counted in,
+     and the grid has to be one grid. */
+  --text-micro: 0.75rem; /* 12px — status prefixes, tags, section labels */
   --text-xs: 0.8125rem; /* 13px — ASCII decoration, footnotes */
   --text-sm: 0.875rem; /* 14px — nav links, card metadata, inline code */
-  --text-base: 0.9375rem; /* 15px — TUI body copy, panel contents */
-  --text-lg: 1.0625rem; /* 17px — section headings, card titles */
-  --text-xl: 1.375rem; /* 22px — page title */
-  --text-2xl: 1.75rem; /* 28px — hero line */
+  --text-base: 0.9375rem; /* 15px — panel contents, and the shell's 1ch */
 
   /* ---- Prose scale --------------------------------------------------------
-     The same typeface, opened up. */
-  --text-prose: 1.0625rem; /* 17px */
-  --text-prose-lead: 1.1875rem; /* 19px — the opening paragraph */
+     The same typeface, opened up. These are the sizes a reader actually reads. */
+  --text-prose: 1.25rem; /* 20px — body copy. See the measure arithmetic below. */
+  --text-prose-lead: 1.375rem; /* 22px — the opening paragraph */
+
+  /* ---- Display scale ------------------------------------------------------
+     Headings and titles. Above the prose, because a heading is read once and a
+     paragraph is read five times, and the eye needs to find the structure first. */
+  --text-lg: 1.5rem; /* 24px — a card title, a role title, a case-study title */
+  --text-xl: 1.75rem; /* 28px — a section heading */
+  --text-hero: 3.25rem; /* 52px — the name on the home page, and only that */
 
   /* ---- Measures -----------------------------------------------------------
      In `ch`, because the advance width is fixed and `ch` is therefore the real
-     character count. 66ch of this font is about 66 characters per line. */
+     character count. 66ch of this font is about 66 characters per line.
+     THE GEOMETRY. `1ch` scales with the font size, so growing the prose by 3px
+     grows the reading column by 3px per character without changing how many
+     characters it holds — and something has to give, because the column is inside
+     a shell that is a fixed number of cells wide.
+
+     JetBrains Mono's advance is 0.6em, and `ch` is that advance, so at `--text-base`
+     (0.9375rem = 15px) one cell is 0.6 × 15 = 9px. The shell is `--shell-cols` cells
+     wide at 15px; a `66ch` column is 66 cells wide at the prose size. Multiply out:
+
+         before   prose 17px -> 1ch 10.2px -> 66ch = 673.2px
+                  shell 76 cells @ 15px   = 684.0px      slack  10.8px
+         after    prose 20px -> 1ch 12.0px -> 66ch = 792.0px
+                  shell 88 cells @ 15px   = 792.0px      slack   0.0px
+
+     66 characters is the number this design is built on, and 88 × 15 = 66 × 20 =
+     1320 makes the two widths the SAME physical width exactly. So the shell grew to
+     88 cells and the measure did not move. The site is now 792px wide instead of
+     684px, which is +15.8% and visible; that is the honest price of a 3px-larger
+     body at an unchanged character count.
+
+     THE CEILING, and the alternative that was rejected. Holding the shell at 684px
+     and letting the measure fall instead is arithmetically free — 684 / 12 = 57
+     characters — and 57 is still inside the 60-80 band that monospace reads well
+     in. It was rejected on two grounds, not on taste. First, a type-size change is
+     not a licence to change the character count: 66ch is a documented property of
+     the reading mode, and shortening every line on the site would be a reading
+     change disguised as a layout one. Second, 792px is nowhere near the real
+     ceiling. The ceiling is a CHARACTER count, not a pixel count — past roughly 80
+     characters the eye loses the return sweep to the next line — and 66 is the
+     middle of the band. 66ch at 20px is 8.25in at 96dpi, which fits a 1280px
+     viewport with room either side, and the shell falls back to `100% - 2rem` below
+     a 824px viewport so the column is never wider than the screen.
+
+     The measured advance is 8.781px at 15px rather than the nominal 9px (recorded in
+     odd/tasks/portfolio-foundation.md from a headless run), so the absolute pixel
+     figures in the table are ~2.3% smaller in a browser: 773px rather than 792px.
+     Every ratio above is unaffected, because both widths scale with the same
+     constant, and the shell still equals the measure.
+
+     BaseLayout.astro owns `--shell-cols` and carries the cross-reference. */
   --measure-prose: 66ch;
   --measure-lede: 58ch;
 
@@ -70,6 +125,11 @@ body {
  * This is the one place the frame comes off. Monospace body text at 15px with
  * 1.5 leading is fine for a card summary and miserable for 800 words, so prose
  * steps up in size, opens the leading, and holds a narrower measure in ch.
+ *
+ * At 20px the size step is no longer a courtesy, it is the point: 15px monospace
+ * is genuinely hard to read for more than a sentence, and 20px monospace is more
+ * legible than a proportional face at 15px. The aesthetic and the legibility stop
+ * competing here, which is why prose is the thing that grew and chrome is not.
  * -------------------------------------------------------------------- */
 .prose {
   font-size: var(--text-prose);
@@ -107,10 +167,10 @@ body {
 }
 
 .prose h2 {
-  /* A section break, in TUI grammar: a rule, a gap, and an uppercase tracked label.
-     The size step up is real (22px against a 17px body) but it is not doing the work
-     alone — case, weight, tracking and the rule are what make a heading a heading, so
-     the hierarchy survives a monochrome display and a zoomed-out view. */
+  /* A section break, in the visual language: a rule, a gap, and an uppercase tracked
+     label. The size step up is real (28px against a 20px body) but it is not doing
+     the work alone — case, weight, tracking and the rule are what make a heading a
+     heading, so the hierarchy survives a monochrome display and a zoomed-out view. */
   font-size: var(--text-xl);
   font-weight: 700;
   text-transform: uppercase;

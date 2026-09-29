@@ -28,15 +28,13 @@ import { site } from '../site.config'
 interface Props {
   title: string
   description: string
-  /** Renders the hero-sized title treatment instead of the compact one. */
-  wide?: boolean
   /** Open Graph object type. */
   type?: 'website' | 'article'
   /** ISO date, for `article:published_time`. */
   publishedTime?: string
 }
 
-const { title, description, wide = false, type, publishedTime } = Astro.props
+const { title, description, type, publishedTime } = Astro.props
 
 const palette = paletteCss()
 ---
@@ -62,7 +60,7 @@ const palette = paletteCss()
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
 
-    <div class:list={['shell', wide && 'shell--wide']}>
+    <div class="shell">
       <SiteNav />
 
       <main id="main" class="shell__main" tabindex="-1">
@@ -76,10 +74,23 @@ const palette = paletteCss()
 
 <style>
   /* One width for the whole shell, measured in character cells, so the nav, the main
-     column and the footer all start and end on the same column of the grid. This is
-     the same `ch` unit `Panel` measures its frame in. */
+     column and the footer all start and end on the same column of the grid. This is the
+     same `ch` unit `Panel` measures its frame in.
+
+     76 -> 88, and the whole reason is the prose. `ch` scales with the font size, so
+     the 66-character reading column went from 673px at 17px to 792px at 20px, and a
+     684px shell no longer held it. 88 cells at 15px is 792px, which is exactly
+     66 cells at 20px — 88 x 15 = 66 x 20 — so the reading column and the chrome are
+     the same physical width and neither one has slack the other does not. The full
+     derivation, and the measure-drop alternative that was rejected, are in
+     `typography.css` under `--measure-prose`.
+
+     `wide` is gone with this. A case study used to ask for a second, wider shell
+     (88 cells) so the reading column had room; that number is now the default, so
+     the prop had nothing left to switch and the case study renders identically
+     before and after. */
   .shell {
-    --shell-cols: 76;
+    --shell-cols: 88;
     display: flex;
     flex-direction: column;
     gap: 2ch;
@@ -87,12 +98,6 @@ const palette = paletteCss()
     margin-inline: auto;
     min-height: 100svh;
     padding-block: 1.5ch 2ch;
-  }
-
-  /* The reading column. A case study drops its frame, so it also drops the shell's
-     fixed width and holds a measure in `ch` instead. */
-  .shell--wide {
-    --shell-cols: 88;
   }
 
   .shell__main {

@@ -21,8 +21,10 @@ import { site } from '../../site.config'
  * card summary and genuinely tiring across 800 words, and a panel around it would
  * make that worse, not better, by narrowing the measure further.
  *
- * The `wide` layout widens the shell so the reading column has room to sit at its own
- * measure without being pushed against the edge.
+ * The `wide` layout used to widen the shell for this page alone so the reading column
+ * had room to sit at its own measure. The shell is now that wide for every page, so the
+ * layout is gone: the case study gets the same width as everything else, and the prose
+ * measure is what the shell is sized around.
  */
 
 export async function getStaticPaths() {
@@ -53,7 +55,6 @@ const sections = headings.filter((h) => h.depth === 2 && h.slug)
   description={description}
   type="article"
   publishedTime={date.toISOString()}
-  wide
 >
   <Panel class="case__header">
     <nav class="case__crumb" aria-label="Breadcrumb">
