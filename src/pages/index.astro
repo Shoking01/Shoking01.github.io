@@ -1,13 +1,16 @@
 ---
+import { createRequire } from 'node:module'
+
 import { getCollection } from 'astro:content'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SessionLine from '../components/SessionLine.astro'
 import ProjectRow from '../components/ProjectRow.astro'
+import { skillGroups } from '../data/skills'
 import { site } from '../site.config'
 
 /**
- * Home. One session, three commands, and no frame in the content column.
+ * Home. One session, four commands, and no frame in the content column.
  *
  * A terminal's output changes shape — a prompt, a paragraph, a table, a blank line —
  * and that variety is the signal that it is a terminal and not a stack of cards. So
@@ -15,8 +18,13 @@ import { site } from '../site.config'
  * it still owns a case study's metadata header; the scrollback below it is not framed.
  *
  *   adrián@portfolio:~$ cat profile
+ *   adrián@portfolio:~$ uname -a
  *   adrián@portfolio:~$ ls -1 projects/
  *   adrián@portfolio:~$
+ *
+ * The order is the argument: who I am, what this machine is, what I have built. The
+ * machine block sits in the middle because it is the transition — it is the point
+ * where the page stops being a claim about a person and starts being evidence.
  *
  * There is no project data in this file. `getCollection` reads every markdown file in
  * `src/content/projects/`, so adding a project adds a row here without touching this
@@ -50,6 +58,126 @@ const hasSource = projects.some((project) => project.data.links.length > 0)
 
 /** The count line a shell would print after a listing. Never an empty box. */
 const count = `${projects.length} ${projects.length === 1 ? 'entry' : 'entries'}`
+
+/* ------------------------------------------------------------------ *
+ * uname -a. Every value below is measured, not typed.
+ *
+ * The rule for this block is that it must not be able to drift. A version number
+ * written into a template is a lie the day somebody runs `pnpm upgrade` and forgets
+ * this file, and a version number written by hand into a `uname` line is the single
+ * most forgettable string on a portfolio site. So every figure is read at build time
+ * from the thing it describes, and a value that cannot be read is OMITTED — the line
+ * it belonged on disappears rather than printing a plausible guess. A `uname` that
+ * lies about its own kernel is worse than one that says less.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Astro's own version, from the RESOLVED package rather than from this repository's
+ * `package.json` range. `astro: "^7.3.5"` is a range, and `7.9.0` satisfies it, so
+ * printing the range would print a caret. `require` resolves through the exports map
+ * and lands on the one version that was actually compiled, which is the number the
+ * reader cares about. `astro/package.json` is an explicit subpath in Astro's exports,
+ * so this is a supported entry point and not a reach into private internals.
+ */
+function resolvedVersion(specifier: string): string | undefined {
+  try {
+    return createRequire(import.meta.url)(specifier).version as string | undefined
+  } catch {
+    return undefined
+  }
+}
+
+const astroVersion = resolvedVersion('astro/package.json')
+
+/** Node and the platform, from the process doing the build. Cannot be wrong. */
+const nodeVersion = process.versions.node
+const platform = `${process.platform} ${process.arch}`
+
+/**
+ * The package manager that ran this build, from its own `user-agent` string.
+ *
+ * `pnpm` writes `pnpm/12.5.1 npm/? node/? win32 x64` into the environment for its own
+ * child processes, so the manager is derived rather than assumed — which matters,
+ * because a repository's lockfile name is a convention and the user agent is a fact
+ * about the machine that produced the bytes. It is `undefined` when the build was not
+ * run through a package manager, and then the segment is dropped, not faked.
+ */
+const packageManager = /^(?<name>[a-z]+)\/(?<version>\d[\w.+-]*)/.exec(
+  process.env.npm_config_user_agent ?? '',
+)?.groups
+
+const shellLine = [
+  astroVersion && `astro ${astroVersion}`,
+  packageManager && `${packageManager.name} ${packageManager.version}`,
+]
+  .filter(Boolean)
+  .join(' · ')
+
+/**
+ * `Projects 2 · active 2 · other 0`, computed from the same `getCollection` result the
+ * listing below renders, so the two cannot disagree.
+ *
+ * `other` is `total - active` and covers `maintenance` and `archived`, the other two
+ * states in the schema. It is printed even at zero: a count of zero is information
+ * (nothing is archived), and a segment that appears and disappears as projects land
+ * makes the line harder to read across two visits than a fixed shape.
+ *
+ * NOT `shipped 1 · in progress 1`, which is what a `uname` block wants to say. `status`
+ * is a lifecycle flag and it cannot tell a released project from an unreleased one:
+ * Sh_Images Reborn is finished and shipped and is still `status: active`, because
+ * `active` means maintained, not launched. A shipped/in-progress split would have to be
+ * typed by hand per project, and a hand-typed count on a page whose whole argument is
+ * that the numbers are real is the one thing this block must not do.
+ */
+const activeCount = projects.filter((project) => project.data.status === 'active').length
+
+const projectsLine = `${projects.length} · active ${activeCount} · other ${projects.length - activeCount}`
+
+/**
+ * The technologies the site actually claims, derived from two existing sources rather
+ * than typed: the curated `Native & systems` skill group, intersected with every
+ * technology any shipped project actually uses.
+ *
+ * The intersection is the point. Either source alone is a claim that can go stale —
+ * the skills taxonomy lists `Linux`, `Networking` and `Virtualization` for roles the
+ * projects do not evidence, and the project stacks list `proptest`, which is a test
+ * harness rather than a focus. What survives is what the owner has grouped as native
+ * and systems work AND has actually built, so adding a Rust project cannot leave the
+ * line claiming Rust is absent, and adding a Linux project cannot silently add a focus
+ * that has not been written up.
+ *
+ * Both sides are already display-form (`skills.ts` holds `GPUI`, not `gpui`), so the
+ * line reads the way the about page reads. If the group is ever renamed, the line goes
+ * away instead of printing half of something.
+ */
+const stackUsed = new Set(projects.flatMap((project) => project.data.stack.map((s) => s.toLowerCase())))
+
+const focusLine = (skillGroups.find((group) => group.label === 'Native & systems')?.items ?? [])
+  .filter((item) => stackUsed.has(item.toLowerCase()))
+  .join(' · ')
+
+/**
+ * The block as label/value pairs, each line dropped if its value could not be derived.
+ * The separator is U+00B7 MIDDLE DOT, inside the declared unicode ranges, which the
+ * arrow and the check mark this design used to reach for are not.
+ *
+ * On the first line, `Portfolio 7.3.5` is PROVENANCE, not a version number for the
+ * site: it is the version of the toolchain that compiled this page, sitting where
+ * `uname -a` puts a kernel version. The `Shell` line is the reproduction recipe — the
+ * same Astro version named, next to the package manager. They look like a duplicate
+ * and are not: one says what built the bytes, the other says what to install to build
+ * them again. If that distinction is not worth the two lines, the Astro version on
+ * either one of them is the thing to cut.
+ */
+const uname: { label: string; value: string }[] = [
+  {
+    label: 'Portfolio',
+    value: [astroVersion, nodeVersion && `Node ${nodeVersion}`, platform].filter(Boolean).join(' · '),
+  },
+  { label: 'Shell', value: shellLine },
+  { label: 'Projects', value: projectsLine },
+  { label: 'Focus', value: focusLine },
+].filter((row) => row.value.length > 0)
 
 /**
  * What the owner is doing right now, in one sentence.
@@ -89,6 +217,21 @@ const now =
           {site.tagline}<span class="caret profile__caret" aria-hidden="true">█</span>
         </p>
       </div>
+    </section>
+
+    <section class="session__step" id="system">
+      <SessionLine as="h2" command="uname -a" />
+
+      <dl class="uname">
+        {
+          uname.map((row) => (
+            <>
+              <dt class="uname__label">{row.label}</dt>
+              <dd class="uname__value">{row.value}</dd>
+            </>
+          ))
+        }
+      </dl>
     </section>
 
     <section class="session__step" id="projects">
@@ -195,6 +338,35 @@ const now =
   .profile__caret {
     margin-inline-start: 0.5ch;
     animation-delay: 0.55s;
+  }
+
+  /* ---- uname -a --------------------------------------------------------------- */
+
+  /* `dt` and `dd` as direct grid items rather than wrapped in a pair div, so one
+     template aligns every label and every value down the page. A wrapper per pair
+     would give each pair its own `max-content` track and the values would step in and
+     out with their labels — the same reasoning `about.astro` uses for `role__meta`.
+     `max-content` for the label track is what makes the second column line up under
+     `Portfolio` without the label widths being hardcoded: the widest label sets the
+     track, and a longer label would widen it rather than collide. */
+  .uname {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.2em 2ch;
+    /* The same size as the label and the value, so the block reads as four lines of
+       output rather than as a definition list with a caption. The only reason the
+       labels are still quieter than the values is `--c-text-muted`, which measures
+       7.37:1 on `base` — the page is unframed, so that is the surface this sits on. */
+    font-size: var(--text-sm);
+  }
+
+  .uname__label {
+    color: var(--c-text-muted);
+  }
+
+  .uname__value {
+    margin: 0;
+    color: var(--c-text-soft);
   }
 
   /* ---- ls -1 projects/ ------------------------------------------------------- */
