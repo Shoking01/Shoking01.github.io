@@ -2,6 +2,14 @@
 
 Personal portfolio site. Static Astro build with a terminal-UI (TUI) visual identity.
 
+The visual language is the whole identity and it is load-bearing: JetBrains Mono,
+Catppuccin Mocha, rounded box-drawing frames, a monospace grid measured in `ch`, the
+elevation ramp, the `#` marker, the scanline overlay. What the site does **not** do is
+imitate a terminal session. There is no `user@host:~$` prompt, no command names, no
+numbered history and no blinking caret. A portfolio that pretends to be a terminal is a
+portfolio about pretending to be a terminal; this one looks the way it was built and
+reads like a portfolio.
+
 ## Stack
 
 | Concern | Choice |
@@ -67,30 +75,74 @@ actually protect this design, because none of them are errors:
 
 It runs against `dist/`, so it checks what ships rather than what the source intends.
 
+Note that the character check is looser than the real constraint on purpose: its safe
+ranges include U+2190-21FF, but the two declared faces do not cover them, so `→` passes
+`pnpm verify` and still falls back in a browser. Do not use it.
+
 ## Design rules
 
 These are load-bearing. Changing one means revisiting every component that uses it.
 
 - **Rounded box drawing only.** Panels, cards, and frames use `╭ ─ ╮ │ ╰ ╯`. Sharp corners
   (`┌ ┐ └ ┘`) and ASCII (`+ - |`) are wrong for this aesthetic.
+- **The visual language is the identity; the simulation is not.** JetBrains Mono, the Mocha
+  ramp, the rounded frames, the `ch` grid, the `#` marker and the scanline overlay all stay.
+  The prompt, the command names, the numbered history, the blinking caret and the `ls` table
+  do not come back. Nothing renders a `$` or an `@`.
 - **The TUI is the shell, not the content.** Frames belong to nav, headers, section rules,
-  project cards, code, and the footer. Case-study prose drops the frame, widens its measure,
-  and uses `line-height: 1.7+` with a larger font size. Monospace body text at small sizes is
-  fatiguing over a long read.
+  project cards, code, and the footer. Prose drops the frame, holds a measure in `ch`, and
+  uses `line-height: 1.7+` at a larger font size. Monospace body text at 15px is fatiguing
+  over a long read; at 20px it is more legible than a proportional face at 15px, which is
+  why 20px is the body size and chrome stayed at 12-15px.
 - **Depth comes from the elevation ramp, not shadows.** Surfaces step
   `base → mantle → crust → surface0 → surface1 → surface2`. Panels sit on `surface0`.
 - **The site is dark-only.** No theme toggle.
 - **Content is English-only.** No i18n layer.
 
+## The measure, and the shell it forces
+
+`ch` scales with the font size, so the reading column and the shell are the same decision
+twice. The arithmetic, in full, is in `src/styles/typography.css` under `--measure-prose`;
+the short version:
+
+| | prose | 1ch | `--measure-prose` | shell | shell width |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| before | 17px | 10.2px | 66ch = 673px | 76 cells @ 15px | 684px |
+| **now** | **20px** | **12.0px** | **66ch = 792px** | **88 cells @ 15px** | **792px** |
+
+`88 × 15 = 66 × 20 = 1320`, so the reading column and the shell are the same physical width
+and neither has slack the other lacks. **The site is 792px wide, up from 684px** — that is
+the visible cost of a 3px-larger body at an unchanged character count.
+
+The alternative was to hold the shell at 684px and let the measure fall to 57 characters.
+It was rejected because 66ch is a documented property of the reading mode, and because the
+real ceiling on a reading column is a character count rather than a pixel count: 66 is the
+middle of the 60-80 band monospace reads well in.
+
+Two consequences to know before editing either file:
+
+- `1ch` resolves against **the element's own font size**. A `66ch` `max-width` on an element
+  still at 15px is 580px, and 580px of 20px text is 48 characters, not 66. Declare the size
+  on the element that carries the measure, never one level above it.
+- A grid with no `grid-template-columns` has one implicit `auto` track, sized by its content.
+  `Panel` and `AsciiRule` hold runs of 256 box-drawing characters meant to be clipped, so an
+  `auto` track asks for the run's max-content size, `fr` does not cap the answer, and the
+  page opens sideways. Every single-column grid declares `grid-template-columns:
+  minmax(0, 1fr)`.
+
 ## Accessibility rules
 
 - `overlay0` on `base` fails WCAG contrast. It is for decorative borders and disabled states
   only, never for text that must be read.
-- Meaning is never encoded by color alone.
-- Every animation, including the blinking caret, is neutralized under
-  `@media (prefers-reduced-motion: reduce)`.
-- Focus is always visible via `:focus-visible`.
+- Meaning is never encoded by color alone. The lifecycle state is a word, a glyph and a hue;
+  the current nav item is an underline and a weight as well as a colour.
+- Every animation is neutralized under `@media (prefers-reduced-motion: reduce)`. There is
+  exactly one: the scanline overlay's drift. Astro's `::view-transition-*` animations are
+  killed by name, since no local stylesheet would reach them.
+- Focus is always visible via `:focus-visible`, and the current page carries
+  `aria-current="page"` on a real anchor.
 - The scanline overlay is decorative, `pointer-events: none`, and never sits over body text.
+
 
 ## Adding a project
 
@@ -118,6 +170,11 @@ links:
 The markdown body is the case study. It renders in the unframed reading mode: no
 panel, a 66ch measure, `line-height: 1.75` and a font-size step up from the rest of the
 site.
+
+`summary` is not decoration and it is not a one-liner in practice: it is the descriptive
+paragraph at the top of the project's card on the home page, at prose size and a 63-character
+measure. Write it as a sentence, not as a file name. The `title` is what the card links, and
+it is a human name, not the slug.
 
 A missing or malformed field fails `astro build` with the collection name, the entry,
 the field and the file path — content errors surface at build time rather than
@@ -223,21 +280,30 @@ src/
   data/
     skills.ts            Skill taxonomy. Typed data, deliberately not a collection
   layouts/
-    BaseLayout.astro     <head>, nav, footer, skip link
+    BaseLayout.astro     <head>, nav, footer, skip link, the shell width
   components/
     Panel.astro          Rounded box-drawing frame
     AsciiRule.astro      Section separator
-    Box.astro            Elevation-ramp surface primitive
+    Box.astro            Elevation-ramp surface primitive (currently unused)
+    SiteNav.astro        Framed primary navigation
+    SiteFooter.astro     Framed status line
+    ProjectCard.astro    One project: title, status, summary, metadata, two links
+    StatusTag.astro      Lifecycle state: word, glyph and colour together
+    Seo.astro            Head, canonical, Open Graph, Twitter
   styles/
     tokens.css           Catppuccin Mocha → CSS custom properties
     fonts.css            Self-hosted JetBrains Mono, two faces
-    typography.css       Type scale, measure, reading defaults
+    typography.css       Type scale, measure arithmetic, reading defaults
     global.css           Reset, base styles, focus, reduced motion
   pages/
-    index.astro          Home
+    index.astro          Home: hero, intro, facts, project cards
     about.astro          Experience and Skills
     projects/[...slug].astro   Project detail
 ```
+
+`Box.astro` has no callers. It predates the redesign, it is a one-rung surface switcher that
+`Panel` and the page-level CSS now cover, and it is listed here so its absence is a fact in
+the repository rather than a surprise. It is not dead code the redesign introduced.
 
 ## The frame is a character grid
 
@@ -263,5 +329,9 @@ Consequences worth knowing before editing `Panel`:
 - `cols` is a character count, not a pixel width. A panel is
   `min(cols ch, 100%)`, and the rails are clipped rather than gapped when the
   viewport is narrower, because a clipped `─` is still part of a continuous line.
+  Omit `cols` and the panel is **fluid**: it fills its container and has no cap of
+  its own, so its container has to have a definite width. A fluid panel inside a
+  content-sized grid track asks for the max-content size of its 256-character rail
+  and the page opens sideways. See the grid note above.
 - Every frame element is `aria-hidden`. Panel content is ordinary markup.
 
