@@ -1,125 +1,101 @@
 ---
 import Panel from './Panel.astro'
-import SessionLine from './SessionLine.astro'
+import { site } from '../site.config'
 
 /**
- * The nav is the session, not a menu.
+ * The nav is a nav.
  *
- *   adrián@portfolio:~$ cat about█
- *     1  cat profile        2  ls -1 projects/
+ *   Adrián Quirós                                    projects   about
  *
- * One line says where you are — the command for the route you are on — and one line
- * lists the other commands. Every destination in the nav is a real `<a href>`, so the
- * grammar costs nothing: deep links, the back button and `ClientRouter` all still work
- * exactly as they did when this was `home / projects / about`.
+ * It used to be a shell prompt with a numbered command history under it. The grammar
+ * was a static map of the session dressed as a record of one, and it is gone: a
+ * portfolio that pretends to be a terminal is a portfolio about pretending to be a
+ * terminal. What survives is the part that was load-bearing — a framed panel on the
+ * `mantle` rung of the ramp, chrome-sized type, a real `<a href>` for every
+ * destination, and the current page marked on a real anchor.
  *
- * HONESTLY, WHAT THE NUMBERED LIST IS. It is a STATIC MAP OF THE SESSION, not a record
- * of it. A real `history` lists the commands THIS visitor ran, in THIS order, since
- * THIS login. Without client-side JavaScript the server cannot know any of that: every
- * document here is prerendered, so the list is byte-identical on every request and
- * says nothing about where anyone has been. It is a menu wearing a shell's grammar,
- * and that is the whole of the trick.
+ * THE BRAND IS THE HOME LINK, and there is deliberately no separate "home" item. Two
+ * links to `/` on one line is one destination stated twice, and it makes
+ * `aria-current="page"` ambiguous: the attribute would have to be true on both, or on
+ * one of them and false on an identical link a centimetre away, which teaches a screen
+ * reader that the attribute means "one of these". So the owner's name is the way home
+ * and the two items beside it are the sections that are not.
  *
- * NUMBERS, NOT TIMESTAMPS, and that is the honest choice rather than the easy one. A
- * timestamp would have to be invented, because the one fact a server has — the instant
- * of the request — is not a time the visitor did anything. `1 2 3` is a claim this
- * document can actually support: these are commands, in this order.
+ * `aria-current` IS ON A REAL ANCHOR, which is the same argument the old prompt link
+ * made and the reason it still holds: an element that only LOOKS current is a current
+ * page for sighted users and nothing at all for everyone else. The current item is
+ * marked with weight and an underline as well as colour, so the state survives a
+ * monochrome display, Windows high contrast and a greyscale print.
  *
- * There is deliberately NO `Last login:` line. It is the most convincing thing a
- * terminal's chrome can print, and printing it here would be a fabricated fact about
- * the visitor: the server has a request, not a session, and a date would be a lie with
- * a timestamp on it. Same reason there is no uptime, no `$?`, and no hostname that
- * claims to be a real machine.
+ * A CASE STUDY MARKS NOTHING, and that is the honest outcome rather than a gap. The
+ * reader is in none of the two nav destinations — they are in a document those
+ * destinations point at. The case study carries its own breadcrumb with
+ * `aria-current="page"` on its own title, so the page still says where it is in the
+ * hierarchy; claiming "projects" here would put `aria-current` on a link whose `href`
+ * goes somewhere else, which is worse than saying nothing.
  *
- * The command's own line — `adrián@portfolio:` — is `SessionLine`'s, which reads the
- * login name out of `site.name` with the same split and the same accent the old brand
- * link used, so renaming the owner renames both and a shell prompt cannot spell the
- * owner two different ways in one viewport. That derivation lives in ONE place, in the
- * component that renders the prompt, which is the reason this file no longer imports
- * `site` at all: there is no second copy of the rule here to fall out of sync.
+ * There is still no `Last login:`, no uptime and no `$?` here, and the reason has not
+ * changed: the server has a request, not a session. Every line in this component is a
+ * fact about the document being served or about where it links, and nothing on this
+ * page claims to be a fact about the visitor.
  *
- * The caret on the prompt is a plain `.caret` with no delay, so the three phases the
- * site already had are intact: this one at 0s, a page's own prompt at 0.3s, the profile
- * caret at 0.55s. It is a sibling of `SessionLine` rather than a prop of it on purpose
- * — `SessionLine` renders a caret only on a prompt that is WAITING, and a nav prompt
- * that has already run its command is not waiting.
+ * `site` is imported for `name` only. The old prompt derived a login name from it and
+ * that derivation lived in one place; with the prompt gone there is nothing left to
+ * derive, so this file takes the name as written and does not re-case it.
  */
 
-interface Command {
-  /** The command, exactly as the prompt prints it. */
-  command: string
-  /** Where it goes. The current route is a link too, carrying `aria-current="page"`. */
+interface Route {
+  /** Where it goes. A real `href`, so deep links, the back button and `ClientRouter`
+      all keep working exactly as they did. */
   href: string
-  /** Where the prompt says you are while this command is the current one. */
-  path: string
-  /** Plain English, because `cat about` is not a destination a screen reader can use. */
+  /** Plain English, because a destination is not something a screen reader can read out
+      of an icon. */
   label: string
+  /**
+   * The pathname that makes this route the current one, or `undefined` when it cannot
+   * be current.
+   *
+   * `projects` points at a fragment of the home page, and a fragment is not a document:
+   * `/#projects` while you are on `/` means "somewhere on this page", not "this is the
+   * page you are on". Marking it current would put `aria-current="page"` on a link
+   * that does not lead to the document being viewed.
+   */
+  current?: string
 }
 
-/**
- * The whole session, in the order the site runs it. The history numbers are this
- * array's indices, so a number can never point at a different route than the command
- * beside it.
- */
-const SESSION: Command[] = [
-  { command: 'cat profile', href: '/', path: '~', label: 'home' },
-  { command: 'ls -1 projects/', href: '/#projects', path: '~', label: 'projects' },
-  { command: 'cat about', href: '/about', path: '~/about', label: 'about' },
+const ROUTES: Route[] = [
+  { href: '/#projects', label: 'projects' },
+  { href: '/about', label: 'about', current: '/about' },
 ]
 
-/**
- * A case study is a command too, and this is why.
- *
- * The prompt has to say something true on every route. Claiming `cat profile` while the
- * reader is halfway through a case study would be a lie, and the case-study page is out
- * of scope to change, so the grammar absorbs the detail route: you are inside one of the
- * files the listing names, so you are in `projects/` running `cat` on it. The file name
- * is `project.id` — the same string the row below prints — plus the `.md` it really has
- * on disk, so the command is executable as written.
- *
- * Nothing in `SESSION` matches a project route, which is the honest outcome: the reader
- * is in none of the three nav destinations, so no history entry claims to be current and
- * `aria-current="page"` stays on the prompt alone.
- */
 const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/'
+const isHome = pathname === '/'
 
-const projectId = pathname.startsWith('/projects/') ? pathname.slice('/projects/'.length) : ''
-
-const current: Command = SESSION[pathname === '/' ? 0 : pathname.startsWith('/about') ? 2 : -1] ?? {
-  command: projectId ? `cat ${projectId}.md` : 'cat profile',
-  href: pathname,
-  path: projectId ? '~/projects' : '~',
-  label: projectId,
+/** The brand doubles as the home link, so it is current on `/` and nowhere else. */
+function isCurrent(route: Route): boolean {
+  return route.current === pathname
 }
-
-/** The other commands, still in `SESSION` order and still numbered by their own index. */
-const history = SESSION.flatMap((entry, index) =>
-  entry === current ? [] : [{ ...entry, n: index + 1 }],
-)
 ---
 
 <Panel surface="chrome" class="nav">
-  <nav class="nav__session" aria-label="Session">
-    <div class="nav__prompt">
-      <SessionLine command={current.command} path={current.path} href={current.href} />
-      <span class="caret nav__caret" aria-hidden="true">█</span>
-    </div>
+  <nav class="nav__row" aria-label="Main">
+    <a class="nav__brand" href="/" aria-current={isHome ? 'page' : undefined}>{site.name}</a>
 
-    {
-      history.length > 0 && (
-        <ul class="nav__history" role="list">
-          {history.map(({ n, href, command, label }) => (
-            <li>
-              <a class="nav__cmd" href={href}>
-                <span class="nav__cmd-num" aria-hidden="true">{n}</span>
-                <span class="visually-hidden">{label}: </span>
-                <span class="nav__cmd-text">{command}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )
-    }
+    <ul class="nav__list" role="list">
+      {
+        ROUTES.map((route) => (
+          <li>
+            <a
+              class="nav__link"
+              href={route.href}
+              aria-current={isCurrent(route) ? 'page' : undefined}
+            >
+              {route.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
   </nav>
 </Panel>
 
@@ -130,64 +106,74 @@ const history = SESSION.flatMap((entry, index) =>
     z-index: 3;
   }
 
-  .nav__session {
-    display: grid;
-    /* Tight, not zero: the history reads as output indented under its own prompt
-       rather than as a second, unrelated row of chrome. */
-    row-gap: 0.3em;
+  /* One row, brand against destinations, spread to the full width of the frame. The
+     panel is the same fluid width as the shell, so the nav's left edge is the main
+     column's left edge and the two stack on the grid rather than merely near it. */
+  .nav__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.4em 2ch;
     font-size: var(--text-sm);
   }
 
-  .nav__prompt {
-    display: flex;
-    align-items: baseline;
-  }
-
-  /* Phase one of three. `global.css` owns the blink and the reduced-motion kill; this
-     sets no delay at all, so it blinks at 0s against a page prompt at 0.3s and the
-     profile caret at 0.55s. */
-  .nav__caret {
-    margin-inline-start: 0.5ch;
-  }
-
-  /* Two cells of indent, the same two cells the about page indents nested output by,
-     because that is what a command's continuation looks like. `flex-wrap` rather than a
-     grid so the entries sit as close together as they fit and wrap only when the shell
-     is too narrow for two, instead of leaving a column-shaped hole. */
-  .nav__history {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.15em 2.5ch;
-    margin: 0;
-    padding: 0;
-    padding-inline-start: 2ch;
-    list-style: none;
-  }
-
-  /* `role="list"` on the `<ul>` is not decoration: `list-style: none` makes Safari drop
-     list semantics entirely, and this list is numbered, so the numbers are the list. */
-  .nav__cmd {
-    display: inline-flex;
-    align-items: baseline;
-    /* Two cells between the number and the command, which is what a numbered history
-       looks like. The numbers are one digit wide because the session has fewer than
-       ten commands; a tenth would shift the column by a cell, and that is a shell's
-       problem, not a layout bug. */
-    gap: 2ch;
-    color: var(--c-text-soft);
+  /* The one place the name is set at chrome body size rather than at `--text-sm`. It is
+     the site's identity rather than one of its destinations, so it gets the accent and
+     one step of weight, and the current-page underline underneath it does the rest. */
+  .nav__brand {
+    color: var(--c-accent);
+    font-size: var(--text-base);
+    font-weight: 700;
     text-decoration: none;
-    white-space: nowrap;
   }
 
-  .nav__cmd:hover {
+  .nav__brand:hover {
     color: var(--c-link-hover);
     text-decoration: underline;
   }
 
-  /* Dimmed, and the quietest legal rung: `subtext1` measures 9.26:1 on `base` and the
-     nav sits on `chrome`, which is darker. The number is one step quieter again
-     (`subtext0`), because it is an ordinal rather than a command. */
-  .nav__cmd-num {
-    color: var(--c-text-muted);
+  .nav__brand[aria-current] {
+    color: var(--c-text);
+  }
+
+  /* `role="list"` is not decoration: `list-style: none` makes Safari drop list
+     semantics entirely, and this is the site's primary navigation. */
+  .nav__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em 2.5ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* `--c-text-soft`, and not the muted ramp: the nav sits on `chrome`, which is darker
+     than the page, and `subtext1` measures 9.26:1 there. Quiet enough to read as
+     navigation, legible enough to be a link. */
+  .nav__link {
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .nav__link:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+
+  /* Weight AND underline, so the current page is a shape change and not only a colour
+     change. `border-radius: 1px` so the global two-tone focus ring is a crisp
+     rectangle around the word rather than a pill. */
+  .nav__link[aria-current] {
+    color: var(--c-text);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .nav__link:focus-visible,
+  .nav__brand:focus-visible {
+    border-radius: 1px;
   }
 </style>
