@@ -2,9 +2,7 @@
 import { getCollection } from 'astro:content'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
-import Panel from '../components/Panel.astro'
-import AsciiRule from '../components/AsciiRule.astro'
-import Box from '../components/Box.astro'
+import SessionLine from '../components/SessionLine.astro'
 import { skillGroups } from '../data/skills'
 import { site } from '../site.config'
 
@@ -20,10 +18,10 @@ import { site } from '../site.config'
  * a small change: move the two sections into two pages and this file becomes the
  * experience half.
  *
- * There is no experience markdown body to render, so unlike a case study this page stays
- * entirely in chrome mode — framed panels, dense type, no unframed reading column. The
- * longest text on the page is a three-line bullet, and dropping the frame to give eight
- * words more measure would be theatre.
+ * It is the same grammar as the home page, with different commands: `cat experience`
+ * and `cat skills`. The commands are the section headings, the output below each one is
+ * the section, and there is no frame anywhere in the content column — the frame belongs
+ * to the chrome and to a case study's metadata header, not to a list of jobs.
  */
 
 const roles = (await getCollection('experience')).sort(
@@ -39,6 +37,11 @@ const roles = (await getCollection('experience')).sort(
 )
 
 const hasRoles = roles.length > 0
+
+/** The count line a shell would print after a listing. Never an empty box. */
+const roleCount = `${roles.length} ${roles.length === 1 ? 'role' : 'roles'}`
+
+const skillCount = skillGroups.reduce((total, group) => total + group.items.length, 0)
 
 const MONTHS = [
   'Jan',
@@ -85,69 +88,54 @@ const languages = 'Spanish native, English professional working proficiency (B2+
   title={`About — ${site.name}`}
   description="Roles, what was done in them, and the stack: a full-stack developer who started in technical support and root cause analysis."
 >
-  <Panel class="about__head">
-    <nav class="about__crumb" aria-label="Breadcrumb">
-      <a class="about__crumb-link" href="/">~/</a>
-      <span class="about__crumb-sep" aria-hidden="true">/</span>
-      <span class="about__crumb-here" aria-current="page">about</span>
-    </nav>
+  <div class="session">
+    <h1 class="visually-hidden">About</h1>
 
-    <h1 class="about__title">About</h1>
+    <section class="session__step" id="experience">
+      <SessionLine as="h2" command="cat experience" path="~/about" />
 
-    <p class="about__lede">Roles I have held, and what I work with.</p>
-  </Panel>
+      {
+        hasRoles ? (
+          <ol class="roles">
+            {roles.map((entry) => {
+              const { company, role, location, remote, start, end, current, granularity, summary, highlights, stack } =
+                entry.data
+              // Unreachable while the schema holds, and the same wording the schema forbids,
+              // rather than `undefined` rendered into a page.
+              const open = current || !end
+              return (
+                <li class="role">
+                  <h3 class="role__title">{role}</h3>
 
-  <div id="experience">
-    <AsciiRule label="experience" />
-  </div>
+                  <p class="role__company">
+                    {company}
+                    {remote && <span class="role__remote">remote</span>}
+                  </p>
 
-  {
-    hasRoles ? (
-      <ol class="about__roles">
-        {roles.map((entry) => {
-          const { company, role, location, remote, start, end, current, granularity, summary, highlights, stack } =
-            entry.data
-          // Unreachable while the schema holds, and the same wording the schema forbids,
-          // rather than `undefined` rendered into a page.
-          const open = current || !end
-          return (
-            <li class="about__role">
-              <Panel>
-                <article class="role__inner">
-                  <header class="role__head">
-                    <div class="role__id">
-                      <h2 class="role__title">{role}</h2>
-                      <p class="role__company">{company}</p>
-                    </div>
+                  <dl class="role__meta">
+                    <dt class="label">period</dt>
+                    <dd>
+                      <time datetime={iso(start)}>{stamp(start, granularity)}</time>
+                      <span class="role__sep">-</span>
+                      {open ? (
+                        <span>present</span>
+                      ) : (
+                        <time datetime={iso(end!)}>{stamp(end!, granularity)}</time>
+                      )}
+                    </dd>
 
-                    {remote && <span class="role__badge">remote</span>}
-                  </header>
+                    <dt class="label">location</dt>
+                    <dd>{location}</dd>
+                  </dl>
 
                   {summary && <p class="role__summary">{summary}</p>}
 
-                  <dl class="role__meta">
-                    <div class="role__pair">
-                      <dt class="label">period</dt>
-                      <dd>
-                        <time datetime={iso(start)}>{stamp(start, granularity)}</time>
-                        <span class="role__sep">-</span>
-                        {open ? (
-                          <span>present</span>
-                        ) : (
-                          <time datetime={iso(end!)}>{stamp(end!, granularity)}</time>
-                        )}
-                      </dd>
-                    </div>
-
-                    <div class="role__pair">
-                      <dt class="label">location</dt>
-                      <dd>{location}</dd>
-                    </div>
-                  </dl>
-
                   <ul class="role__highlights">
                     {highlights.map((highlight) => (
-                      <li>{highlight}</li>
+                      <li>
+                        <span class="role__bullet" aria-hidden="true">*</span>
+                        {highlight}
+                      </li>
                     ))}
                   </ul>
 
@@ -158,122 +146,86 @@ const languages = 'Spanish native, English professional working proficiency (B2+
                       ))}
                     </ul>
                   )}
-                </article>
-              </Panel>
-            </li>
-          )
-        })}
-      </ol>
-    ) : (
-      <Panel>
-        <p class="about__empty">
-          No roles yet. Create one markdown file in <code>src/content/experience/</code>.
-        </p>
-      </Panel>
-    )
-  }
+                </li>
+              )
+            })}
+          </ol>
+        ) : (
+          <p class="count">(no entries)</p>
+        )
+      }
 
-  <div id="skills">
-    <AsciiRule label="skills" />
-  </div>
-
-  <Panel class="skills">
-    <p class="skills__languages">
-      <span class="skills__languages-label">spoken</span>
-      <span>{languages}</span>
-    </p>
-
-    <div class="skills__groups">
       {
-        skillGroups.map((group) => (
-          <Box surface="raised">
-            <div class="skills__group">
-              <h3 class="skills__group-label">{group.label}</h3>
-              <ul class="skills__items">
+        hasRoles && (
+          <p class="count">{roleCount}</p>
+        )
+      }
+
+      {
+        !hasRoles && (
+          <p class="count__note">
+            No roles yet. Create one markdown file in <code>src/content/experience/</code>.
+          </p>
+        )
+      }
+    </section>
+
+    <section class="session__step" id="skills">
+      <SessionLine as="h2" command="cat skills" path="~/about" />
+
+      <p class="languages">
+        <span class="languages__label">spoken</span>
+        <span class="languages__sep" aria-hidden="true">│</span>
+        <span class="languages__text">{languages}</span>
+      </p>
+
+      <div class="groups">
+        {
+          skillGroups.map((group) => (
+            <section class="group">
+              <h3 class="label">{group.label}</h3>
+              <ul class="group__items">
                 {group.items.map((item) => (
-                  <li class="skills__item">{item}</li>
+                  <li class="group__item">{item}</li>
                 ))}
               </ul>
-            </div>
-          </Box>
-        ))
-      }
-    </div>
-  </Panel>
+            </section>
+          ))
+        }
+      </div>
+
+      <p class="count">{skillCount} items in {skillGroups.length} groups</p>
+    </section>
+
+    <SessionLine path="~/about" />
+  </div>
 </BaseLayout>
 
 <style>
-  /* ---- Page header ---------------------------------------------------------- */
+  /* ---- The session -----------------------------------------------------------
+     One blank line between steps, exactly as on the home page: same grammar, different
+     commands. A step itself is flush, because a command's output starts on the line
+     under the command. */
 
-  .about__crumb {
-    font-size: var(--text-sm);
-    color: var(--c-text-muted);
-    margin-block-end: 0.75em;
-  }
+  .session {
+    --session-gap: calc(var(--leading-chrome) * 1em);
 
-  .about__crumb-link {
-    color: var(--c-text-soft);
-    text-decoration: none;
-  }
-
-  .about__crumb-link:hover {
-    color: var(--c-link-hover);
-    text-decoration: underline;
-  }
-
-  .about__crumb-sep {
-    color: var(--c-frame);
-    padding-inline: 0.35ch;
-  }
-
-  .about__crumb-here {
-    color: var(--c-text);
-  }
-
-  /* Uppercase and tracked, matching what `AsciiRule` does with a section label, so the
-     page heading and the section headings read as one family. */
-  .about__title {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    line-height: 1.2;
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-label);
-  }
-
-  .about__lede {
-    margin-block-start: 0.6em;
-    color: var(--c-text-soft);
-    max-width: var(--measure-lede);
-  }
-
-  .about__roles {
     display: grid;
-    gap: 1.5ch;
+    row-gap: var(--session-gap);
+  }
+
+  .session__step {
+    display: grid;
+  }
+
+  /* ---- cat experience -------------------------------------------------------- */
+
+  .roles {
+    display: grid;
+    row-gap: var(--session-gap);
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .about__empty {
-    color: var(--c-text-soft);
-  }
-
-  /* ---- One role -------------------------------------------------------------
-     Everything in this block sits on `surface0`, which is where the muted text token
-     is still safe: `--c-text-muted` is `subtext0`, measured at 5.65:1 on a panel and
-     4.10:1 from `surface1` up. The raised skills boxes below are past that line, which
-     is why they do not use it. */
-
-  .role__inner {
-    display: grid;
-  }
-
-  .role__head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.25em 2ch;
   }
 
   .role__title {
@@ -286,18 +238,43 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     color: var(--c-accent);
   }
 
-  /* A labelled status, in the slot `StatusTag` occupies on a project card and not
-     rendered by it. `StatusTag`'s contract is a lifecycle state with a colour per state,
-     and "remote" is neither: adding it there would mean inventing a fourth state, or
-     leaving a component with a colourless branch. So the label is rendered here with
-     the same type treatment, and it is a word, which is what makes it readable without
-     relying on a hue. */
-  .role__badge {
+  /* "remote" is a fact about the job and a hue is not a fact, so it is a word. It is
+     not a `StatusTag`: that component's contract is a lifecycle state with a colour per
+     state, and "remote" is neither — adding it there would mean inventing a fourth
+     state or leaving a component with a colourless branch. Rendered in the same tracked
+     micro caps the `ls` column headings use, and only when the schema says it is true. */
+  .role__remote {
+    margin-inline-start: 1.5ch;
     font-size: var(--text-micro);
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
-    color: var(--c-text-soft);
+    color: var(--c-text-muted);
     white-space: nowrap;
+  }
+
+  /* `dt` and `dd` are direct grid items rather than wrapped in a pair div, so one
+     template aligns every label and every value in the column down the page. A wrapper
+     per pair would give each pair its own `max-content` track and the values would step
+     in and out with their labels. */
+  .role__meta {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.2em 2ch;
+    margin-block-start: 0.7em;
+  }
+
+  .role__meta dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--c-text-soft);
+  }
+
+  /* Not `aria-hidden`: a screen reader should still hear a range as a range. ASCII `-`
+     rather than an en dash, and `-` rather than the arrow glyph, which is outside both
+     declared font faces. */
+  .role__sep {
+    color: var(--c-text-muted);
+    padding-inline: 0.35ch;
   }
 
   .role__summary {
@@ -306,44 +283,23 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     max-width: var(--measure-prose);
   }
 
-  .role__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5em 3ch;
-    margin-block-start: 0.9em;
-  }
-
-  .role__pair {
-    display: grid;
-    gap: 0.15em;
-  }
-
-  .role__pair dd {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--c-text-soft);
-  }
-
-  /* Not `aria-hidden`: a screen reader should still hear a range as a range. */
-  .role__sep {
-    color: var(--c-text-muted);
-    padding-inline: 0.35ch;
-  }
-
+  /* Two cells of indent, the way a command's nested output is indented under its own
+     line rather than flush to the prompt. The highlights are short paragraphs, not
+     running prose, so they hold the wider prose measure rather than the lede one. */
   .role__highlights {
-    /* Wider than the lede on purpose. These are the substance of the entry and they are
-       short paragraphs, not prose to be read line after line. */
     max-width: var(--measure-prose);
-    margin-block-start: 1em;
-    padding-inline-start: 1.4em;
-    list-style: disc;
+    margin-block-start: 0.9em;
+    padding-inline-start: 2ch;
+    padding-inline-end: 0;
+    list-style: none;
   }
 
   .role__highlights li + li {
     margin-block-start: 0.45em;
   }
 
-  .role__highlights li::marker {
+  .role__bullet {
+    margin-inline-end: 0.4ch;
     color: var(--c-accent);
   }
 
@@ -351,7 +307,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     display: flex;
     flex-wrap: wrap;
     gap: 1.5ch;
-    margin-block-start: 1.1em;
+    margin-block-start: 1em;
     padding: 0;
     list-style: none;
     font-size: var(--text-sm);
@@ -360,68 +316,85 @@ const languages = 'Spanish native, English professional working proficiency (B2+
 
   .role__tech::before {
     content: '#';
-    color: var(--c-line);
+    color: var(--c-frame);
   }
 
-  /* ---- Skills -------------------------------------------------------------- */
+  /* ---- cat skills ------------------------------------------------------------ */
 
-  .skills__languages {
+  /* Three tracks, so a wrapped sentence resumes under the first character of the text
+     and not under the label. The same grammar as the `currently` line on the home page:
+     a label, a `│` borrowed from the footer's separator, and the value. */
+  .languages {
+    display: grid;
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    align-items: baseline;
     color: var(--c-text);
     max-width: var(--measure-prose);
   }
 
-  .skills__languages-label {
-    color: var(--c-text-soft);
+  .languages__label {
+    font-size: var(--text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--c-text-muted);
+  }
+
+  .languages__sep {
+    color: var(--c-frame);
+    margin-inline: 0.5ch;
   }
 
   /* `auto-fit` with a `ch` floor rather than a fixed column count: two columns at the
      shell's 76 cells, one below that, and never a column narrower than the longest item
-     needs to stay on one line. The boxes are the grid items and default `stretch` makes
-     them share a row height, so nothing here has to match them by class. */
-  .skills__groups {
+     needs to stay on one line. */
+  .groups {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(30ch, 1fr));
-    gap: 1.5ch;
-    margin-block-start: 1.2em;
+    gap: 1.4ch 3ch;
+    margin-block-start: var(--session-gap);
+    margin-block-end: 0;
   }
 
-  /* The padding lives here, on a parent-scoped element, and not on the `Box` itself.
-     Astro gives a child component's root element the CHILD's scope id and not the
-     parent's, so `.skills__group` on `<Box class="...">` compiles to a selector this
-     element does not carry and the rule silently does nothing. (`ProjectCard` has the
-     same latent no-op on its `Panel`; it is harmless there, because the rule only
-     restates the colour the panel body already sets.) */
-  .skills__group {
-    padding: 0.9em 1em;
-  }
+  /* The group headings carry the `.label` utility rather than a local copy of it: this
+     page is unframed, so the surface is `base`, where `subtext0` measures 7.37:1 and
+     the utility is safe. It gives the same uppercase-and-tracked treatment the `ls`
+     column headings use, so the two read as one family. */
 
-  /* A local label, not the `.label` utility. `Box surface="raised"` is `surface1`, and
-     `.label` is `--c-text-muted`, which measures 4.10:1 there and fails AA. This is
-     `--c-text-soft` at 5.15:1, which is the same substitution `tokens.css` documents
-     for every raised surface. */
-  .skills__group-label {
-    font-size: var(--text-micro);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-label);
-    color: var(--c-text-soft);
-  }
-
-  .skills__items {
+  .group__items {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35em 1.5ch;
     margin-block-start: 0.7em;
+    margin-block-end: 0;
     padding: 0;
     list-style: none;
     font-size: var(--text-sm);
     color: var(--c-text);
   }
 
-  /* The same `#` prefix the project cards use for `stack`, so a wrapped row of skills
-     cannot be misread as a run of prose. */
-  .skills__item::before {
+  /* The same `#` prefix the project rows and the role stacks use for a tool, so a
+     wrapped row of skills cannot be misread as a run of prose. It is inline, next to its
+     own word, so it is not announced as a list marker and needs no `aria-hidden` span of
+     its own — unlike the `*` above, which starts a line. */
+  .group__item::before {
     content: '#';
-    color: var(--c-line);
+    color: var(--c-frame);
     margin-inline-end: 0.35ch;
+  }
+
+  /* ---- Counts ----------------------------------------------------------------
+     Shell vocabulary after each listing: what a pipe into `wc` would have said. An
+     empty collection says `(no entries)` rather than leaving a gap where a count would
+     go — the same word a shell says about an empty directory. */
+
+  .count {
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+  }
+
+  /* For whoever runs the site, not for whoever reads it. */
+  .count__note {
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
   }
 </style>
