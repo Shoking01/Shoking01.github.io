@@ -2,7 +2,7 @@
 import { getCollection } from 'astro:content'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
-import SessionLine from '../components/SessionLine.astro'
+import AsciiRule from '../components/AsciiRule.astro'
 import { skillGroups } from '../data/skills'
 import { site } from '../site.config'
 
@@ -18,10 +18,18 @@ import { site } from '../site.config'
  * a small change: move the two sections into two pages and this file becomes the
  * experience half.
  *
- * It is the same grammar as the home page, with different commands: `cat experience`
- * and `cat skills`. The commands are the section headings, the output below each one is
- * the section, and there is no frame anywhere in the content column — the frame belongs
- * to the chrome and to a case study's metadata header, not to a list of jobs.
+ * It is the same grammar as the home page — a rule, a section heading, the content —
+ * with different content. What was removed is the same thing that was removed there:
+ * the `cat experience` and `cat skills` commands and the `*` that stood in for the
+ * shape of a list item. A job is not command output. Each one is a block: what the
+ * role was, where it was, when it ran, and then the work, at prose size, as sentences a
+ * reader can read rather than as fragments they have to reassemble.
+ *
+ * NO VISIBLE `h1`, and that is a decision rather than an omission. The page has two
+ * section headings and both are real `h2`s, so the outline is correct and a screen
+ * reader announces the sections; what it does not have is a large word at the top whose
+ * only content is the word "About", which is what the home page's 52px name is for and
+ * what repeating here would dilute. The hidden heading keeps the document named.
  */
 
 const roles = (await getCollection('experience')).sort(
@@ -38,7 +46,7 @@ const roles = (await getCollection('experience')).sort(
 
 const hasRoles = roles.length > 0
 
-/** The count line a shell would print after a listing. Never an empty box. */
+/** What a listing prints after it. Never an empty section. */
 const roleCount = `${roles.length} ${roles.length === 1 ? 'role' : 'roles'}`
 
 const skillCount = skillGroups.reduce((total, group) => total + group.items.length, 0)
@@ -88,15 +96,16 @@ const languages = 'Spanish native, English professional working proficiency (B2+
   title={`About — ${site.name}`}
   description="Roles, what was done in them, and the stack: a full-stack developer who started in technical support and root cause analysis."
 >
-  <div class="session">
+  <div class="page">
     <h1 class="visually-hidden">About</h1>
 
-    <section class="session__step" id="experience">
-      <SessionLine as="h2" command="cat experience" path="~/about" />
+    <section class="section" id="experience">
+      <AsciiRule as="div" cols={200} />
+      <h2 class="section__title">Experience</h2>
 
       {
         hasRoles ? (
-          <ol class="roles">
+          <ol class="roles" role="list">
             {roles.map((entry) => {
               const { company, role, location, remote, start, end, current, granularity, summary, highlights, stack } =
                 entry.data
@@ -130,17 +139,17 @@ const languages = 'Spanish native, English professional working proficiency (B2+
 
                   {summary && <p class="role__summary">{summary}</p>}
 
-                  <ul class="role__highlights">
+                  <ul class="role__highlights" role="list">
                     {highlights.map((highlight) => (
-                      <li>
+                      <li class="role__highlight">
                         <span class="role__bullet" aria-hidden="true">*</span>
-                        {highlight}
+                        <span class="role__highlight-text">{highlight}</span>
                       </li>
                     ))}
                   </ul>
 
                   {stack.length > 0 && (
-                    <ul class="role__stack">
+                    <ul class="role__stack" role="list">
                       {stack.map((item) => (
                         <li class="role__tech">{item}</li>
                       ))}
@@ -170,8 +179,9 @@ const languages = 'Spanish native, English professional working proficiency (B2+
       }
     </section>
 
-    <section class="session__step" id="skills">
-      <SessionLine as="h2" command="cat skills" path="~/about" />
+    <section class="section" id="skills">
+      <AsciiRule as="div" cols={200} />
+      <h2 class="section__title">Skills</h2>
 
       <p class="languages">
         <span class="languages__label">spoken</span>
@@ -184,7 +194,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
           skillGroups.map((group) => (
             <section class="group">
               <h3 class="label">{group.label}</h3>
-              <ul class="group__items">
+              <ul class="group__items" role="list">
                 {group.items.map((item) => (
                   <li class="group__item">{item}</li>
                 ))}
@@ -196,45 +206,78 @@ const languages = 'Spanish native, English professional working proficiency (B2+
 
       <p class="count">{skillCount} items in {skillGroups.length} groups</p>
     </section>
-
-    <SessionLine path="~/about" />
   </div>
 </BaseLayout>
 
 <style>
-  /* ---- The session -----------------------------------------------------------
-     One blank line between steps, exactly as on the home page: same grammar, different
-     commands. A step itself is flush, because a command's output starts on the line
-     under the command. */
-
-  .session {
-    --session-gap: calc(var(--leading-chrome) * 1em);
+  /* ---- The page ---------------------------------------------------------------
+     The same two-block grammar as the home page, so the two pages read as one site:
+     a real gap between blocks, sized in the chrome's own leading, and each block a
+     grid of heading and content rather than a stack of adjacent elements. */
+  .page {
+    --block-gap: calc(var(--leading-chrome) * 2em);
 
     display: grid;
-    row-gap: var(--session-gap);
+    row-gap: var(--block-gap);
   }
 
-  .session__step {
+  .section {
     display: grid;
   }
 
-  /* ---- cat experience -------------------------------------------------------- */
+  /* A bare rule, then the heading. The rule is the section break and the heading is the
+     label, which is the grammar `.prose h2` uses inside a case study, so a section here
+     and a section in a case study are one family. `cols` is a cap and not a width — 200
+     is past any shell this site will render, so `min(200ch, 100%)` is `100%` and this
+     file never has to know what `--shell-cols` is. */
+  .section :global(.rule) {
+    margin-block-end: 0.7em;
+  }
 
+  .section__title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    line-height: 1.25;
+    margin-block-end: 1.4em;
+  }
+
+  /* ---- Experience ------------------------------------------------------------
+     Unframed. The project cards on the home page are framed because each one is a
+     self-contained item to be compared; a CV is not a set of items to be compared, it
+     is a document read top to bottom, so a rule between roles and no frame is the
+     honest treatment. A stack of identical panels around two jobs would look like
+     content the page is padding itself with. */
   .roles {
     display: grid;
-    row-gap: var(--session-gap);
+    row-gap: 2.4em;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  /* The rule that separates one role from the next, `--c-line-subtle` because it
+     divides and does not carry meaning. A role that has no predecessor has nothing to be
+     separated from, so the first one does not draw one. */
+  .role + .role {
+    border-block-start: 1px solid var(--c-line-subtle);
+    padding-block-start: 2.4em;
+  }
+
+  /* 24px, the same step a project card title takes: a job title is the name of a
+     subject, and a subject is read once and named once. */
   .role__title {
     font-size: var(--text-lg);
     font-weight: 700;
     line-height: 1.3;
   }
 
+  /* The employer under the role, at prose size in the accent, so the two-line subject
+     block is title then organisation rather than two competing lines. */
   .role__company {
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
     color: var(--c-accent);
   }
 
@@ -242,7 +285,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
      not a `StatusTag`: that component's contract is a lifecycle state with a colour per
      state, and "remote" is neither — adding it there would mean inventing a fourth
      state or leaving a component with a colourless branch. Rendered in the same tracked
-     micro caps the `ls` column headings use, and only when the schema says it is true. */
+     micro caps the `label` utility uses, and only when the schema says it is true. */
   .role__remote {
     margin-inline-start: 1.5ch;
     font-size: var(--text-micro);
@@ -252,7 +295,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     white-space: nowrap;
   }
 
-  /* `dt` and `dd` are direct grid items rather than wrapped in a pair div, so one
+  /* `dt` and `dd` are direct grid items rather than wrapped in a pair element, so one
      template aligns every label and every value in the column down the page. A wrapper
      per pair would give each pair its own `max-content` track and the values would step
      in and out with their labels. */
@@ -260,7 +303,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     gap: 0.2em 2ch;
-    margin-block-start: 0.7em;
+    margin-block-start: 0.8em;
   }
 
   .role__meta dd {
@@ -277,37 +320,62 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     padding-inline: 0.35ch;
   }
 
+  /* Optional, because a CV states what was done rather than what the job was, and there
+     is no honest one-liner to write for a role whose only source is its bullets. The
+     schema says so; this is where the schema's decision shows up. */
   .role__summary {
-    margin-block-start: 0.8em;
-    color: var(--c-text-soft);
+    margin-block-start: 0.9em;
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
+    color: var(--c-text);
     max-width: var(--measure-prose);
   }
 
-  /* Two cells of indent, the way a command's nested output is indented under its own
-     line rather than flush to the prompt. The highlights are short paragraphs, not
-     running prose, so they hold the wider prose measure rather than the lede one. */
+  /* THE BULLETS ARE PROSE NOW. A highlight is a sentence a person wrote about work
+     they did, and at 20px it is three or four lines of a column rather than a fragment
+     on one line, so this is the page's reading mode and not a list of chrome.
+
+     Two columns, marker then text, for the same reason the `currently` line on the home
+     page has three: a wrapped line has to start under the FIRST CHARACTER of the text,
+     not under the marker. An inline `*` inside a paragraph would put the second line
+     back at column zero and the list would stop being a list.
+
+     The leading is 1.6 rather than the prose 1.75 because these are separate
+     one-sentence items with a margin between them, not consecutive paragraphs of one
+     account. Paragraphs need the air; a list of statements does not, and at 1.75 the
+     gaps are indistinguishable from accidental. */
   .role__highlights {
     max-width: var(--measure-prose);
-    margin-block-start: 0.9em;
+    margin-block-start: 1em;
     padding-inline-start: 2ch;
-    padding-inline-end: 0;
     list-style: none;
   }
 
-  .role__highlights li + li {
-    margin-block-start: 0.45em;
+  .role__highlight {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0 0.5ch;
+    font-size: var(--text-prose);
+    line-height: 1.6;
   }
 
+  .role__highlight + .role__highlight {
+    margin-block-start: 0.5em;
+  }
+
+  /* The marker is decorative: a `*` before a sentence is a shape, and a screen reader
+     announcing "star" before every highlight would be noise. It is a separate span
+     rather than a `::before` because a generated box is not selectable, not copyable and
+     not reachable by a text zoom that re-flows the grid. */
   .role__bullet {
-    margin-inline-end: 0.4ch;
     color: var(--c-accent);
   }
 
   .role__stack {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5ch;
-    margin-block-start: 1em;
+    gap: 0.2em 1.5ch;
+    margin-block-start: 1.2em;
     padding: 0;
     list-style: none;
     font-size: var(--text-sm);
@@ -316,18 +384,23 @@ const languages = 'Spanish native, English professional working proficiency (B2+
 
   .role__tech::before {
     content: '#';
-    color: var(--c-frame);
+    color: var(--c-line);
   }
 
-  /* ---- cat skills ------------------------------------------------------------ */
-
-  /* Three tracks, so a wrapped sentence resumes under the first character of the text
-     and not under the label. The same grammar as the `currently` line on the home page:
-     a label, a `│` borrowed from the footer's separator, and the value. */
+  /* ---- Skills ----------------------------------------------------------------
+     Four groups, uneven on purpose, and the unevenness is the grouping. `src/data/
+     skills.ts` explains the two placements that look like mistakes — Rust under both
+     Languages and Native & systems, Node.js and Tailwind under Web — and the
+     certifications that are deliberately absent. Do not "fix" that file from here. */
   .languages {
     display: grid;
+    /* Three tracks, so a wrapped sentence resumes under the first character of the
+       text and not under the label. The same grammar as the `currently` line. */
     grid-template-columns: max-content max-content minmax(0, 1fr);
     align-items: baseline;
+    gap: 0 0.5ch;
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
     color: var(--c-text);
     max-width: var(--measure-prose);
   }
@@ -341,29 +414,28 @@ const languages = 'Spanish native, English professional working proficiency (B2+
 
   .languages__sep {
     color: var(--c-frame);
-    margin-inline: 0.5ch;
   }
 
   /* `auto-fit` with a `ch` floor rather than a fixed column count: two columns at the
-     shell's 76 cells, one below that, and never a column narrower than the longest item
-     needs to stay on one line. */
+     shell's 88 cells, one below that, and never a column narrower than the longest item
+     needs to stay on one line. The floor is the chrome's `ch` at 15px, which is the
+     grid the `#` markers are counted in. */
   .groups {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(30ch, 1fr));
-    gap: 1.4ch 3ch;
-    margin-block-start: var(--session-gap);
+    gap: 1.6ch 3ch;
+    margin-block-start: 1.4em;
     margin-block-end: 0;
   }
 
   /* The group headings carry the `.label` utility rather than a local copy of it: this
      page is unframed, so the surface is `base`, where `subtext0` measures 7.37:1 and
-     the utility is safe. It gives the same uppercase-and-tracked treatment the `ls`
-     column headings use, so the two read as one family. */
-
+     the utility is safe. It gives the same uppercase-and-tracked treatment the section
+     titles use, one step down. */
   .group__items {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35em 1.5ch;
+    gap: 0.3em 1.5ch;
     margin-block-start: 0.7em;
     margin-block-end: 0;
     padding: 0;
@@ -372,22 +444,21 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     color: var(--c-text);
   }
 
-  /* The same `#` prefix the project rows and the role stacks use for a tool, so a
+  /* The same `#` prefix the project cards and the role stacks use for a tool, so a
      wrapped row of skills cannot be misread as a run of prose. It is inline, next to its
      own word, so it is not announced as a list marker and needs no `aria-hidden` span of
      its own — unlike the `*` above, which starts a line. */
   .group__item::before {
     content: '#';
-    color: var(--c-frame);
+    color: var(--c-line);
     margin-inline-end: 0.35ch;
   }
 
   /* ---- Counts ----------------------------------------------------------------
-     Shell vocabulary after each listing: what a pipe into `wc` would have said. An
-     empty collection says `(no entries)` rather than leaving a gap where a count would
-     go — the same word a shell says about an empty directory. */
-
+     What a listing prints after itself. An empty collection says `(no entries)` rather
+     than leaving a gap where a count would go, so the page never has a hole in it. */
   .count {
+    margin-block-start: 1.4em;
     font-size: var(--text-sm);
     color: var(--c-text-muted);
   }
