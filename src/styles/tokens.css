@@ -81,6 +81,14 @@
   /* Borders that carry meaning, e.g. an active field. 5.65:1 on a panel. */
   --c-line-strong: var(--ctp-subtext0);
 
+  /* Mid-strength line: the blockquote marker and the `#` prefix on a stack. This token
+     was used in three files and declared in none, so every one of those declarations
+     was silently dead — a missing custom property is not an error, the browser just
+     drops the value, which for `border-*-color` drops the whole shorthand and leaves
+     no border at all. `overlay2` measures 5.81:1 on base and 4.45:1 on a panel: a
+     visible marker without competing with the text it marks. */
+  --c-line: var(--ctp-overlay2);
+
   /* Focus ring: 9.27:1 on base, 5.15:1 even on surface1. */
   --c-focus: var(--ctp-peach);
 
