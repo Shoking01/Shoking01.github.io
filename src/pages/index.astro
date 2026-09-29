@@ -2,17 +2,26 @@
 import { getCollection } from 'astro:content'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
-import Panel from '../components/Panel.astro'
-import AsciiRule from '../components/AsciiRule.astro'
-import ProjectCard from '../components/ProjectCard.astro'
+import SessionLine from '../components/SessionLine.astro'
+import ProjectRow from '../components/ProjectRow.astro'
 import { site } from '../site.config'
 
 /**
- * Home. A TUI hero, then the project list straight out of the collection.
+ * Home. One session, three commands, and no frame in the content column.
+ *
+ * A terminal's output changes shape — a prompt, a paragraph, a table, a blank line —
+ * and that variety is the signal that it is a terminal and not a stack of cards. So
+ * nothing here is a `Panel`. `Panel` still owns the chrome, the nav and the footer, and
+ * it still owns a case study's metadata header; the scrollback below it is not framed.
+ *
+ *   adrián@portfolio:~$ cat profile
+ *   adrián@portfolio:~$ ls -1 projects/
+ *   adrián@portfolio:~$
  *
  * There is no project data in this file. `getCollection` reads every markdown file in
- * `src/content/projects/`, so adding a project adds a card here without touching this
- * page — which is the whole point of the content layer.
+ * `src/content/projects/`, so adding a project adds a row here without touching this
+ * page — which is the whole point of the content layer, and now the reason the NAME
+ * column reads like a file name: the row is the file.
  *
  * Sort order is `featured` first, then the author's `order`, then newest first. The
  * tiebreak matters: two projects with the same `order` should not swap places between
@@ -28,6 +37,9 @@ const projects = (await getCollection('projects')).sort(
 
 const hasProjects = projects.length > 0
 
+/** The count line a shell would print after a listing. Never an empty box. */
+const count = `${projects.length} ${projects.length === 1 ? 'entry' : 'entries'}`
+
 /**
  * What the owner is doing right now, in one sentence.
  *
@@ -37,108 +49,236 @@ const hasProjects = projects.length > 0
  * written, not derived — `status: active` cannot tell a finished project from an
  * unfinished one, so there is nothing in the collection to compute this from.
  *
- * It sits between the role and the tagline, not after the tagline, so the blinking caret
- * stays at the visual end of the hero. And it is deliberately the quietest line on the
- * page: no status light, no "available for work" badge, because whether the owner wants
- * to advertise availability is a decision he has not made yet.
+ * It is deliberately the quietest line on the page: `--text-sm` on the muted ramp, no
+ * status light, no "available for work" badge, because whether the owner wants to
+ * advertise availability is a decision he has not made yet. Unframed, the page surface
+ * is `base`, where `subtext0` measures 7.37:1 — a full point better than the panel it
+ * used to sit in.
  */
 const now =
   'maintaining a released desktop image viewer, and building a chat client and server alongside it.'
 ---
 
 <BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
-  <Panel class="hero">
-    <h1 class="hero__name">{site.name}</h1>
-    <p class="hero__role">{site.role}</p>
-    <p class="hero__now">
-      <span class="hero__now-label">currently</span>
-      <span class="hero__sep" aria-hidden="true">│</span>
-      <span>{now}</span>
-    </p>
-    <p class="hero__tagline">
-      {site.tagline}<span class="caret hero__caret" aria-hidden="true">█</span>
-    </p>
-  </Panel>
+  <div class="session">
+    <section class="session__step">
+      <SessionLine command="cat profile" />
 
-  <div id="projects">
-    <AsciiRule label="projects" />
-  </div>
+      <div class="profile">
+        <h1 class="profile__name">{site.name}</h1>
+        <p class="profile__role">{site.role}</p>
 
-  {
-    hasProjects ? (
-      <ul class="projects">
-        {projects.map((project) => (
-          <li class="projects__item">
-            <ProjectCard project={project} />
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <Panel>
-        <p class="projects__empty">
-          No projects yet. Create one markdown file in <code>src/content/projects/</code>.
+        <p class="profile__now">
+          <span class="profile__now-label">currently</span>
+          <span class="profile__now-sep" aria-hidden="true">│</span>
+          <span class="profile__now-text">{now}</span>
         </p>
-      </Panel>
-    )
-  }
+
+        <p class="profile__tagline">
+          {site.tagline}<span class="caret profile__caret" aria-hidden="true">█</span>
+        </p>
+      </div>
+    </section>
+
+    <section class="session__step" id="projects">
+      <SessionLine as="h2" command="ls -1 projects/" />
+
+      {
+        hasProjects && (
+          <table class="ls">
+            <thead>
+              <tr>
+                <th scope="col" data-col="name">name</th>
+                <th scope="col" data-col="status">status</th>
+                <th scope="col" data-col="date">started</th>
+                <th scope="col" data-col="stack">stack</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((project) => (
+                <ProjectRow project={project} />
+              ))}
+            </tbody>
+          </table>
+        )
+      }
+
+      <p class="ls__count">{hasProjects ? count : '(no entries)'}</p>
+
+      {
+        !hasProjects && (
+          <p class="ls__note">
+            No projects yet. Create one markdown file in <code>src/content/projects/</code>.
+          </p>
+        )
+      }
+    </section>
+
+    <SessionLine />
+  </div>
 </BaseLayout>
 
 <style>
-  .hero {
-    color: var(--c-text);
+  /* ---- The session -----------------------------------------------------------
+     One blank line between steps, so a step is a block and the page reads as a
+     transcript rather than as a list of sections. `--leading-chrome` is unitless, so
+     this is exactly one line of leading at the body size. A step itself is flush: a
+     command's output starts on the line under the command, as it does in a shell. */
+
+  .session {
+    --session-gap: calc(var(--leading-chrome) * 1em);
+
+    display: grid;
+    row-gap: var(--session-gap);
   }
 
-  .hero__name {
+  .session__step {
+    display: grid;
+  }
+
+  /* ---- cat profile ----------------------------------------------------------- */
+
+  .profile__name {
     font-size: var(--text-2xl);
     font-weight: 700;
     line-height: 1.2;
   }
 
-  .hero__role {
+  .profile__role {
     color: var(--c-accent);
   }
 
-  .hero__tagline {
+  .profile__tagline {
+    margin-block-start: 0.7em;
     color: var(--c-text-soft);
     max-width: var(--measure-lede);
   }
 
-  /* The quietest line in the hero, and deliberately so: a size step below the tagline,
-     the muted ramp, and a `│` borrowed from the footer's separator grammar. The panel is
-     `surface0`, which is the last surface `--c-text-muted` is documented as safe on
-     (5.65:1), so this is the highest the line can go without giving up its subordination. */
-  .hero__now {
+  /* Three tracks, not a sentence with a `│` in it. That is the whole trick behind the
+     wrapped continuation: the text is its own grid item, so when it wraps at the
+     measure, the second line starts under the FIRST CHARACTER of the text instead of
+     under the label. A `│` between two inline spans would wrap to column zero. */
+  .profile__now {
+    display: grid;
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    align-items: baseline;
     margin-block-start: 0.7em;
     font-size: var(--text-sm);
     color: var(--c-text-muted);
     max-width: var(--measure-lede);
   }
 
-  .hero__now-label {
+  .profile__now-label {
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
   }
 
-  .hero__sep {
+  .profile__now-sep {
     color: var(--c-frame);
     margin-inline: 0.5ch;
   }
 
-  /* Offset from the nav's caret so the two do not blink in lockstep. */
-  .hero__caret {
+  /* Third phase, so the page has three caret rhythms rather than one. The animation
+     itself, and the `prefers-reduced-motion` kill, are in global.css. */
+  .profile__caret {
     margin-inline-start: 0.5ch;
     animation-delay: 0.55s;
   }
 
-  .projects {
-    display: grid;
-    gap: 1.5ch;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  /* ---- ls -1 projects/ ------------------------------------------------------- */
+
+  /* `table-layout: auto`, not a fixed grid in `ch`: a real `ls` sizes each column to
+     its widest cell, and a project called `sh-something-longer` has to widen the NAME
+     column rather than collide with STATUS. The character grid is still the unit that
+     matters — the gutters are `2ch` and the column-drop breakpoints below are sized
+     against the shell's 76 cells — so the alignment is measured in characters even
+     though the widths are content-driven.
+
+     Breakpoint arithmetic, at the body size where `1ch` is exactly 9px and the shell is
+     `min(76ch, 100% - 2rem)`. A table will not shrink below its min-content width, so
+     these are the numbers that decide where a column has to go:
+
+       all four columns   name 153 + status 62 + date 90 + stack 207 + 3 gutters 54
+                          = 566px, so the viewport must be >= 598px
+       stack dropped      name 153 + status 62 + date 90 + 2 gutters 36 = 341px
+                          so the viewport must be >= 373px
+
+     The breakpoints carry slack on top of those minimums: 640px and 420px. */
+  .ls {
+    width: 100%;
+    font-size: var(--text-base);
   }
 
-  .projects__empty {
-    color: var(--c-text-soft);
+  .ls :global(th),
+  .ls :global(td) {
+    padding-block: 0.35em;
+    /* The gutter, in cells. */
+    padding-inline-end: 2ch;
+    text-align: start;
+    white-space: nowrap;
+  }
+
+  .ls :global(th:last-child),
+  .ls :global(td:last-child) {
+    padding-inline-end: 0;
+  }
+
+  .ls thead th {
+    font-size: var(--text-micro);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--c-text-muted);
+    /* A rule that carries meaning: it separates the column names from the data, which
+       is the one `--c-line-strong` use on this page. Row rules below are division
+       only, so they take the subtle token. */
+    border-block-end: 1px solid var(--c-line-strong);
+  }
+
+  .ls tbody :global(th),
+  .ls tbody :global(td) {
+    border-block-end: 1px solid var(--c-line-subtle);
+  }
+
+  .ls tbody :global(tr:last-child th),
+  .ls tbody :global(tr:last-child td) {
+    border-block-end: 0;
+  }
+
+  /* A raised surface, not a colour change: the row is on `base` and this lifts it to
+     `surface0`, which is the elevation ramp doing what it is for. Every colour in the
+     row clears AA there — `subtext0` measures 5.65:1 and the accents are documented as
+     safe to `surface1`. */
+  .ls tbody :global(tr:hover) {
+    background-color: var(--surface-panel);
+  }
+
+  /* Columns are dropped, not wrapped. A wrapped stack column under a 17-character
+     project name turns a listing into a paragraph, and the point of the table is that
+     a value is always in the same place. Stack goes first because it is the widest and
+     the least load-bearing: it is on the case study in full, and the name alone already
+     says what a project is. The date goes second, and what is left is the two columns a
+     reader actually scans: what it is, and whether it is alive. */
+  @media (max-width: 640px) {
+    .ls :global([data-col='stack']) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .ls :global([data-col='date']) {
+      display: none;
+    }
+  }
+
+  .ls__count {
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+  }
+
+  /* For whoever runs the site, not for whoever reads it. */
+  .ls__note {
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
   }
 </style>

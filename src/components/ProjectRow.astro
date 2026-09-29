@@ -1,0 +1,108 @@
+---
+import type { CollectionEntry } from 'astro:content'
+import StatusTag from './StatusTag.astro'
+
+/**
+ * One project, as one row of `ls -1 projects/`.
+ *
+ * The row is a `<tr>`, and the file name is the link. `ls` lists directory entries, so
+ * the listing shows `project.id` — the markdown file's own name without `.md` — rather
+ * than the `title` from its frontmatter. That is the detail that makes the command
+ * above it true: `cat src/content/projects/` and the page say the same thing.
+ *
+ * The human title is still in the accessible name, prefixed as hidden text, so a screen
+ * reader hears "Sh_Images Reborn, sh-images-reborn, link" and a sighted reader sees the
+ * file name. Label in Name holds: the visible string is a suffix of the name, not a
+ * replacement for it.
+ *
+ * The whole row is the hit target, with no script: the link's `::after` is stretched
+ * over the row. `position: relative` is set on the row AND on the cells, because a
+ * `::after` with no positioned ancestor resolves against the initial containing block —
+ * which is the entire viewport. If a browser ever ignored relative positioning on a
+ * table row, the fallback is the anchor's own cell rather than a link painted over the
+ * whole page.
+ *
+ * The name cell is a `<th scope="row">`: it names the row, so it is a header, and the
+ * status, the date and the stack are announced against it instead of as a bare list of
+ * strings. `th` is not a heading element, so this adds nothing to the page outline.
+ */
+
+interface Props {
+  project: CollectionEntry<'projects'>
+}
+
+const { project } = Astro.props
+const { status, date, stack } = project.data
+const href = `/projects/${project.id}`
+const iso = date.toISOString().slice(0, 10)
+---
+
+<tr class="row">
+  <th scope="row" class="row__cell row__cell--name" data-col="name">
+    <a class="row__link" href={href}>
+      <span class="visually-hidden">{project.data.title}, </span>{project.id}
+    </a>
+  </th>
+
+  <td class="row__cell row__cell--status" data-col="status">
+    <StatusTag status={status} />
+  </td>
+
+  <td class="row__cell row__cell--date" data-col="date">
+    <time datetime={iso}>{iso}</time>
+  </td>
+
+  <td class="row__cell row__cell--stack" data-col="stack">{stack.join(' ')}</td>
+</tr>
+
+<style>
+  /* See the note above on why this is set twice. */
+  .row,
+  .row > * {
+    position: relative;
+  }
+
+  .row__cell {
+    vertical-align: baseline;
+    white-space: nowrap;
+  }
+
+  .row__cell--name {
+    text-align: start;
+    font-weight: 400;
+  }
+
+  /* Underlined, not only recoloured, so the row reads as a link on a monochrome
+     display and under Windows high contrast. The underline is the affordance; the
+     colour is the shortcut. */
+  .row__link {
+    color: var(--c-text);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .row__link:hover {
+    color: var(--c-link-hover);
+  }
+
+  /* The focus ring is the global `:focus-visible` two-tone outline, so it is a shape
+     change and not a colour change, and it clears 5.15:1 even on the hover surface. */
+  .row__link:focus-visible {
+    border-radius: 1px;
+  }
+
+  /* The stretched hit target. Transparent, so the row's own hover surface still shows
+     through it, and it carries no text, so it is not a second copy of the link label. */
+  .row__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .row__cell--date,
+  .row__cell--status {
+    color: var(--c-text-soft);
+  }
+</style>

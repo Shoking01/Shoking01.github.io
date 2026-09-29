@@ -1,0 +1,127 @@
+---
+import { site } from '../site.config'
+
+/**
+ * SessionLine — the `user@host:path$ command` prompt.
+ *
+ *   adrián@portfolio:~$ cat profile
+ *   adrián@portfolio:~/about$ cat skills
+ *   adrián@portfolio:~$
+ *
+ * The prompt is the site's voice. Every command in the content column is introduced by
+ * one of these, which is what turns a stack of sections into one continuous session:
+ * the same line, typed again, over and over, with different output underneath it.
+ *
+ * Colour roles, and why each one is a different token:
+ *
+ *   user@host  accent        the machine's identity, like a real PS1
+ *   :  path    muted         where you are; quiet, because you already know
+ *   $          accent        the command marker, matched to the login above
+ *   command    --c-text      the only thing on the line that is content
+ *
+ * The login name is the owner's first name read from `site.name` rather than typed
+ * here, so renaming the owner renames the prompt. `SiteNav` derives its brand prompt
+ * from the same field with the same split, and it keeps the accent: a shell prompt
+ * that spells the owner two different ways in the same viewport is a bug, not a style.
+ * ASCII the accent away if you ever want the login to look like a real `unix` account —
+ * it is one `.toLowerCase()` away from `adrian`.
+ *
+ * A cursor appears only on a prompt that is waiting for input, so `caret` defaults to
+ * the resting case. A caret after a command that has already run would be a lie about
+ * the state of the session, and four carets blinking in a column is a screensaver.
+ *
+ * The whole prefix, `$` included, is decorative: it is machine identity, not content.
+ * A screen reader is told the command and nothing else, so a heading here is announced
+ * as "ls -1 projects" and not as "adrian portfolio tilde dollar ls minus one projects".
+ * The resting prompt is the one case with nothing left to say, so it is hidden in full.
+ *
+ * One build artefact to expect and not to be alarmed by: the conditional `aria-hidden`
+ * on the root makes Astro emit the scoped-style attribute as
+ * `data-astro-cid-<hash>="true"` rather than valueless. It is an attribute NAME selector
+ * in every rule below, so the styling is unaffected — verified in `dist/`, not assumed.
+ */
+
+interface Props {
+  /** The command. Omit it and this is a resting prompt: a bare `$`, waiting. */
+  command?: string
+  /** Working directory before the `$`. `~` for the home page, the route for the rest. */
+  path?: string
+  /** Host in `user@host`. */
+  host?: string
+  /** Force the cursor on or off. Defaults to on only when there is no command. */
+  caret?: boolean
+  /**
+   * Element to render. A command that titles a section is a real heading, so the
+   * section is announced and reachable by heading navigation — the same job
+   * `AsciiRule`'s label used to do.
+   */
+  as?: 'p' | 'h1' | 'h2' | 'h3' | 'div'
+  class?: string
+}
+
+const {
+  command,
+  path = '~',
+  host = 'portfolio',
+  caret,
+  as: Tag = 'p',
+  class: className,
+} = Astro.props
+
+const user = site.name.split(/\s+/)[0]!.toLowerCase()
+
+const cursor = caret ?? !command
+---
+
+<Tag class:list={['session', className]} aria-hidden={command ? undefined : 'true'}>
+  <span class="session__who" aria-hidden="true">{user}@{host}</span><span
+    class="session__sep"
+    aria-hidden="true">:</span><span class="session__path" aria-hidden="true">{path}</span
+  ><span class="session__dollar" aria-hidden="true">$</span>{command && (
+    <span class="session__command">{command}</span>
+  )}{cursor && <span class="caret session__caret" aria-hidden="true">█</span>}
+</Tag>
+
+<style>
+  .session {
+    display: flex;
+    align-items: baseline;
+    /* A prompt never wraps. A wrapped `user@host:path$` looks like a page that ran out
+       of room, which is exactly what a terminal would never do. */
+    white-space: nowrap;
+    color: var(--c-text);
+  }
+
+  .session__who {
+    color: var(--c-accent);
+    font-weight: 700;
+  }
+
+  /* `:` and the path are both location, and both are muted: subtext0 measures 7.37:1
+     on the page surface, and the location is the least interesting thing a prompt can
+     say. */
+  .session__sep,
+  .session__path {
+    color: var(--c-text-muted);
+  }
+
+  /* One whole cell after the `$`, so `$ cat profile` and a bare `$` both get exactly
+     the single space a real shell prints. */
+  .session__dollar {
+    margin-inline-end: 1ch;
+    color: var(--c-accent);
+    font-weight: 700;
+  }
+
+  /* The command is content, so it takes the content colour and the content weight. */
+  .session__command {
+    color: var(--c-text);
+  }
+
+  /* Offset from the nav's caret so the two do not blink in lockstep, and from the
+     profile's own caret so the page has more than one phase. `global.css` owns the
+     animation and the `prefers-reduced-motion` kill; this only sets the delay. */
+  .session__caret {
+    animation-delay: 0.3s;
+  }
+</style>
