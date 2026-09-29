@@ -1,0 +1,427 @@
+---
+import { getCollection } from 'astro:content'
+
+import BaseLayout from '../layouts/BaseLayout.astro'
+import Panel from '../components/Panel.astro'
+import AsciiRule from '../components/AsciiRule.astro'
+import Box from '../components/Box.astro'
+import { skillGroups } from '../data/skills'
+import { site } from '../site.config'
+
+/**
+ * About. Experience and Skills, on ONE route, on purpose.
+ *
+ * The two sections were weighed as two pages and the split lost. Two pages holding two
+ * and five items each is worse information architecture than one dense page, because
+ * the reader who wants both has to choose an order to get them, and the order they want
+ * is the order the page would have. The shell also benefits from fewer, denser routes:
+ * every extra route is another frame, another title, another canonical, another sitemap
+ * entry, and another thing to keep in the nav. If the owner later wants them apart it is
+ * a small change: move the two sections into two pages and this file becomes the
+ * experience half.
+ *
+ * There is no experience markdown body to render, so unlike a case study this page stays
+ * entirely in chrome mode — framed panels, dense type, no unframed reading column. The
+ * longest text on the page is a three-line bullet, and dropping the frame to give eight
+ * words more measure would be theatre.
+ */
+
+const roles = (await getCollection('experience')).sort(
+  (a, b) =>
+    b.data.start.valueOf() - a.data.start.valueOf() ||
+    // An ongoing role has no `end`, and sorts as the latest possible end: a role that is
+    // still open is more recent than one that closed in the month it started.
+    (b.data.end?.valueOf() ?? Number.POSITIVE_INFINITY) -
+      (a.data.end?.valueOf() ?? Number.POSITIVE_INFINITY) ||
+    // Two roles can share a start month, and the order still has to be the same on every
+    // build. Employer name is arbitrary but stable, which is all a tiebreak has to be.
+    a.data.company.localeCompare(b.data.company),
+)
+
+const hasRoles = roles.length > 0
+
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
+
+/**
+ * A role's start or end, at the precision the source stated.
+ *
+ * `granularity` is not decoration: `z.coerce.date()` turns `2025` and `2025-01-01` into
+ * the same value, so without it a role the CV dated by year would render a January
+ * nobody ever claimed. Read the month in UTC because the coerced date is UTC midnight,
+ * and a local `getMonth()` would show the previous month west of Greenwich.
+ */
+function stamp(date: Date, granularity: 'month' | 'year'): string {
+  const year = date.getUTCFullYear()
+  return granularity === 'year' ? `${year}` : `${MONTHS[date.getUTCMonth()]} ${year}`
+}
+
+/** `2025-10` coerced, for the `datetime` attribute. Day precision is a claim too. */
+function iso(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * Spoken languages. Prose rather than a data entry, because it is a claim about a person
+ * rather than a capability that can be listed, and the CEFR level is more precise than a
+ * group heading could carry.
+ */
+const languages = 'Spanish native, English professional working proficiency (B2+).'
+---
+
+<BaseLayout
+  title={`About — ${site.name}`}
+  description="Roles, what was done in them, and the stack: a full-stack developer who started in technical support and root cause analysis."
+>
+  <Panel class="about__head">
+    <nav class="about__crumb" aria-label="Breadcrumb">
+      <a class="about__crumb-link" href="/">~/</a>
+      <span class="about__crumb-sep" aria-hidden="true">/</span>
+      <span class="about__crumb-here" aria-current="page">about</span>
+    </nav>
+
+    <h1 class="about__title">About</h1>
+
+    <p class="about__lede">Roles I have held, and what I work with.</p>
+  </Panel>
+
+  <div id="experience">
+    <AsciiRule label="experience" />
+  </div>
+
+  {
+    hasRoles ? (
+      <ol class="about__roles">
+        {roles.map((entry) => {
+          const { company, role, location, remote, start, end, current, granularity, summary, highlights, stack } =
+            entry.data
+          // Unreachable while the schema holds, and the same wording the schema forbids,
+          // rather than `undefined` rendered into a page.
+          const open = current || !end
+          return (
+            <li class="about__role">
+              <Panel>
+                <article class="role__inner">
+                  <header class="role__head">
+                    <div class="role__id">
+                      <h2 class="role__title">{role}</h2>
+                      <p class="role__company">{company}</p>
+                    </div>
+
+                    {remote && <span class="role__badge">remote</span>}
+                  </header>
+
+                  {summary && <p class="role__summary">{summary}</p>}
+
+                  <dl class="role__meta">
+                    <div class="role__pair">
+                      <dt class="label">period</dt>
+                      <dd>
+                        <time datetime={iso(start)}>{stamp(start, granularity)}</time>
+                        <span class="role__sep">-</span>
+                        {open ? (
+                          <span>present</span>
+                        ) : (
+                          <time datetime={iso(end!)}>{stamp(end!, granularity)}</time>
+                        )}
+                      </dd>
+                    </div>
+
+                    <div class="role__pair">
+                      <dt class="label">location</dt>
+                      <dd>{location}</dd>
+                    </div>
+                  </dl>
+
+                  <ul class="role__highlights">
+                    {highlights.map((highlight) => (
+                      <li>{highlight}</li>
+                    ))}
+                  </ul>
+
+                  {stack.length > 0 && (
+                    <ul class="role__stack">
+                      {stack.map((item) => (
+                        <li class="role__tech">{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </article>
+              </Panel>
+            </li>
+          )
+        })}
+      </ol>
+    ) : (
+      <Panel>
+        <p class="about__empty">
+          No roles yet. Create one markdown file in <code>src/content/experience/</code>.
+        </p>
+      </Panel>
+    )
+  }
+
+  <div id="skills">
+    <AsciiRule label="skills" />
+  </div>
+
+  <Panel class="skills">
+    <p class="skills__languages">
+      <span class="skills__languages-label">spoken</span>
+      <span>{languages}</span>
+    </p>
+
+    <div class="skills__groups">
+      {
+        skillGroups.map((group) => (
+          <Box surface="raised">
+            <div class="skills__group">
+              <h3 class="skills__group-label">{group.label}</h3>
+              <ul class="skills__items">
+                {group.items.map((item) => (
+                  <li class="skills__item">{item}</li>
+                ))}
+              </ul>
+            </div>
+          </Box>
+        ))
+      }
+    </div>
+  </Panel>
+</BaseLayout>
+
+<style>
+  /* ---- Page header ---------------------------------------------------------- */
+
+  .about__crumb {
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+    margin-block-end: 0.75em;
+  }
+
+  .about__crumb-link {
+    color: var(--c-text-soft);
+    text-decoration: none;
+  }
+
+  .about__crumb-link:hover {
+    color: var(--c-link-hover);
+    text-decoration: underline;
+  }
+
+  .about__crumb-sep {
+    color: var(--c-frame);
+    padding-inline: 0.35ch;
+  }
+
+  .about__crumb-here {
+    color: var(--c-text);
+  }
+
+  /* Uppercase and tracked, matching what `AsciiRule` does with a section label, so the
+     page heading and the section headings read as one family. */
+  .about__title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+  }
+
+  .about__lede {
+    margin-block-start: 0.6em;
+    color: var(--c-text-soft);
+    max-width: var(--measure-lede);
+  }
+
+  .about__roles {
+    display: grid;
+    gap: 1.5ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .about__empty {
+    color: var(--c-text-soft);
+  }
+
+  /* ---- One role -------------------------------------------------------------
+     Everything in this block sits on `surface0`, which is where the muted text token
+     is still safe: `--c-text-muted` is `subtext0`, measured at 5.65:1 on a panel and
+     4.10:1 from `surface1` up. The raised skills boxes below are past that line, which
+     is why they do not use it. */
+
+  .role__inner {
+    display: grid;
+  }
+
+  .role__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25em 2ch;
+  }
+
+  .role__title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .role__company {
+    color: var(--c-accent);
+  }
+
+  /* A labelled status, in the slot `StatusTag` occupies on a project card and not
+     rendered by it. `StatusTag`'s contract is a lifecycle state with a colour per state,
+     and "remote" is neither: adding it there would mean inventing a fourth state, or
+     leaving a component with a colourless branch. So the label is rendered here with
+     the same type treatment, and it is a word, which is what makes it readable without
+     relying on a hue. */
+  .role__badge {
+    font-size: var(--text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--c-text-soft);
+    white-space: nowrap;
+  }
+
+  .role__summary {
+    margin-block-start: 0.8em;
+    color: var(--c-text-soft);
+    max-width: var(--measure-prose);
+  }
+
+  .role__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 3ch;
+    margin-block-start: 0.9em;
+  }
+
+  .role__pair {
+    display: grid;
+    gap: 0.15em;
+  }
+
+  .role__pair dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--c-text-soft);
+  }
+
+  /* Not `aria-hidden`: a screen reader should still hear a range as a range. */
+  .role__sep {
+    color: var(--c-text-muted);
+    padding-inline: 0.35ch;
+  }
+
+  .role__highlights {
+    /* Wider than the lede on purpose. These are the substance of the entry and they are
+       short paragraphs, not prose to be read line after line. */
+    max-width: var(--measure-prose);
+    margin-block-start: 1em;
+    padding-inline-start: 1.4em;
+    list-style: disc;
+  }
+
+  .role__highlights li + li {
+    margin-block-start: 0.45em;
+  }
+
+  .role__highlights li::marker {
+    color: var(--c-accent);
+  }
+
+  .role__stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5ch;
+    margin-block-start: 1.1em;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+  }
+
+  .role__tech::before {
+    content: '#';
+    color: var(--c-line);
+  }
+
+  /* ---- Skills -------------------------------------------------------------- */
+
+  .skills__languages {
+    color: var(--c-text);
+    max-width: var(--measure-prose);
+  }
+
+  .skills__languages-label {
+    color: var(--c-text-soft);
+  }
+
+  /* `auto-fit` with a `ch` floor rather than a fixed column count: two columns at the
+     shell's 76 cells, one below that, and never a column narrower than the longest item
+     needs to stay on one line. The boxes are the grid items and default `stretch` makes
+     them share a row height, so nothing here has to match them by class. */
+  .skills__groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(30ch, 1fr));
+    gap: 1.5ch;
+    margin-block-start: 1.2em;
+  }
+
+  /* The padding lives here, on a parent-scoped element, and not on the `Box` itself.
+     Astro gives a child component's root element the CHILD's scope id and not the
+     parent's, so `.skills__group` on `<Box class="...">` compiles to a selector this
+     element does not carry and the rule silently does nothing. (`ProjectCard` has the
+     same latent no-op on its `Panel`; it is harmless there, because the rule only
+     restates the colour the panel body already sets.) */
+  .skills__group {
+    padding: 0.9em 1em;
+  }
+
+  /* A local label, not the `.label` utility. `Box surface="raised"` is `surface1`, and
+     `.label` is `--c-text-muted`, which measures 4.10:1 there and fails AA. This is
+     `--c-text-soft` at 5.15:1, which is the same substitution `tokens.css` documents
+     for every raised surface. */
+  .skills__group-label {
+    font-size: var(--text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--c-text-soft);
+  }
+
+  .skills__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em 1.5ch;
+    margin-block-start: 0.7em;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--c-text);
+  }
+
+  /* The same `#` prefix the project cards use for `stack`, so a wrapped row of skills
+     cannot be misread as a run of prose. */
+  .skills__item::before {
+    content: '#';
+    color: var(--c-line);
+    margin-inline-end: 0.35ch;
+  }
+</style>
