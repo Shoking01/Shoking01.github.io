@@ -34,7 +34,15 @@ const projects = defineCollection({
     /** Your role on it, in your words. Not a job title. */
     role: z.string().min(1),
 
-    /** ISO date. Coerced, so `2025-04` and `2025-04-18` both work. */
+    /**
+     * ISO date. Coerced, so `2025-04` and `2025-04-18` both work.
+     *
+     * This schema deliberately does not decide what the date MEANS, because the
+     * answer belongs to the content, not to the schema. Project entries state it in
+     * their own frontmatter; as of writing, both use the start date rather than a
+     * release or last-updated date. `order` is the primary sort key and this is only
+     * the tiebreaker, so the two do not have to agree.
+     */
     date: z.coerce.date(),
 
     /**
