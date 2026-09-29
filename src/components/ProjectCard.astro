@@ -1,0 +1,242 @@
+---
+import type { CollectionEntry } from 'astro:content'
+import Panel from './Panel.astro'
+import StatusTag from './StatusTag.astro'
+
+/**
+ * One project, as a framed card.
+ *
+ * THE CARD, NOT THE ROW. This used to be one line of an `ls -1` table, which meant the
+ * only thing it could show was a file name, a status, a date and a stack — and it meant
+ * the `summary` field, which the schema has always described as "one line for the
+ * project card", was hidden by the format that replaced the card. A card has room for
+ * a sentence, and the sentence is what a reader actually came for. The descriptive
+ * content leads: title, then `summary`, then the metadata, then the destinations.
+ *
+ * FULL WIDTH, ONE COLUMN, on purpose. At 88 shell cells and 20px prose a two-column
+ * grid would put each summary in about 31 characters, and 31 characters is not a
+ * sentence. A single column gives every card the same 63-character measure the page's
+ * prose gets, which is the whole reason prose grew. The trade is that cards in a
+ * vertical stack cannot be compared at a glance the way columns can, and for two
+ * projects that trade is not worth 31 characters a line.
+ *
+ * TWO DESTINATIONS, AND THEY CANNOT BE ONE ELEMENT. The case study is the card's
+ * title and the repository is a labelled row below it. The alternative — making the
+ * whole card a link and putting the repository on top with a stretched `::after` — is
+ * invalid HTML, because an anchor cannot contain an anchor. That is not a workaround
+ * problem, it is a parse problem: both destinations break in every browser. So the
+ * hit area is the title text, and the cost of that is stated rather than hidden: the
+ * card is not one large hit target. In exchange the repository is a real, focusable,
+ * labelled destination at every width, which on a job-hunting site is worth more than
+ * a bigger target — a reader's next click is almost always "let me read the code".
+ *
+ * `links: []` IS VALID and one entry has it, so the repository has to be able to
+ * disappear. The whole `dt`/`dd` pair is conditional, which is what makes the failure
+ * mode unreachable rather than merely unlikely: there is no separator character to
+ * leave behind and no empty anchor to focus. The same is true of `stack`, which the
+ * schema defaults to `[]`, so a project with no technology listed renders as a card
+ * with a date and two links rather than a card with the word "stack" and nothing after
+ * it.
+ */
+
+interface Props {
+  project: CollectionEntry<'projects'>
+}
+
+const { project } = Astro.props
+const { title, status, date, stack, links, summary } = project.data
+const href = `/projects/${project.id}`
+const iso = date.toISOString().slice(0, 10)
+
+/**
+ * The first outbound link, and the only one rendered here.
+ *
+ * First link only, deliberately. A card listing a case study, a repository, a live
+ * demo and a changelog is a card that stops being a summary and becomes a table, and
+ * the rest are one click away on the case study itself, which prints every one of them
+ * in a full-width row of its own.
+ */
+const source = links[0]
+
+/**
+ * The visible label for that link: the href's own last path segment, and nothing else.
+ *
+ * `links[0].label` is what the author wrote, and for a repository it is usually the word
+ * "source" — which describes the link's role rather than its destination. A link that
+ * says "source" tells a reader nothing they can act on. What is left after taking the
+ * host and the owner off the URL is the repository's own name verbatim,
+ * `Sh_Images-Reborn`, which is recognisable as a repository and one cell shorter than
+ * the owner-qualified form.
+ *
+ * Derived, not typed, and derived so the invariant cannot rot: the visible string is a
+ * suffix of the real `href`, so the accessible name and the visible string agree and
+ * nobody can quietly change the label into something the link is not. The one case that
+ * breaks the invariant is a trailing slash — `https://x.com/repo/` does not end with
+ * `repo` — so the guard is a real check against the untouched `href`, and the author's
+ * own `label` is the fallback for a URL that fails it. `links[0].label` still renders
+ * as written on the case study page.
+ */
+const base = source?.href.replace(/\/+$/, '') ?? ''
+const segment = base.slice(base.lastIndexOf('/') + 1)
+const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment : source.label) : ''
+---
+
+<Panel surface="panel" class="card">
+  <div class="card__head">
+    <h3 class="card__title">
+      <a class="card__case" href={href}>{title}</a>
+    </h3>
+    <StatusTag status={status} />
+  </div>
+
+  <p class="card__summary">{summary}</p>
+
+  <dl class="card__meta">
+    {
+      stack.length > 0 && (
+        <Fragment>
+          <dt class="label">stack</dt>
+          <dd class="card__stack">
+            {stack.map((item) => (
+              <span class="card__tech">{item}</span>
+            ))}
+          </dd>
+        </Fragment>
+      )
+    }
+
+    <dt class="label">started</dt>
+    <dd class="card__date">
+      <time datetime={iso}>{iso}</time>
+    </dd>
+
+    {
+      source && (
+        <Fragment>
+          <dt class="label">source</dt>
+          <dd>
+            <a class="card__repo" href={source.href} rel="noopener">
+              <span class="visually-hidden">repository </span>{repoLabel}
+            </a>
+          </dd>
+        </Fragment>
+      )
+    }
+  </dl>
+</Panel>
+
+<style>
+  /* The panel contributes the frame and one cell of air inside each rail. This adds the
+     rest, on the body rather than by overriding `--panel-pad-block`, because a custom
+     property set here would be fighting the component's own scoped declaration for the
+     same name and winning or losing on stylesheet order. Padding is not worth a
+     specificity race. */
+  .card :global(.panel__body) {
+    padding-block: 0.6em;
+    padding-inline: 1.5ch;
+  }
+
+  .card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25em 2ch;
+  }
+
+  /* 24px: a title is read once and named once, so it sits a step above the prose it
+     introduces and a step below a section heading. */
+  .card__title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* Underlined and bold, not only recoloured, so the title reads as the card's
+     destination on a monochrome display and under Windows high contrast. The underline
+     is the affordance; the colour is the shortcut. `border-radius` only, so the
+     two-tone focus ring is a crisp rectangle around the words rather than a pill
+     around a whole card. */
+  .card__case {
+    color: var(--c-text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .card__case:hover {
+    color: var(--c-link-hover);
+  }
+
+  .card__case:focus-visible {
+    border-radius: 1px;
+  }
+
+  /* The descriptive paragraph, at the page's prose size. It is the reason the card
+     exists: `summary` is capped at 180 characters by the schema, which at this measure
+     is about three lines, and three lines is a sentence and a half rather than a
+     fragment. `prose` is a documented public term for this role of the collection. */
+  .card__summary {
+    margin-block-start: 0.6em;
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
+    color: var(--c-text);
+    max-width: var(--measure-prose);
+  }
+
+  /* `dt` and `dd` as direct grid items rather than wrapped in a pair element, so one
+     template aligns every label and every value down the whole stack of cards. A
+     wrapper per pair would give each pair its own `max-content` track and the values
+     would step in and out with their labels. The widest label sets the track, so a
+     longer label widens the column rather than colliding with it. */
+  .card__meta {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.3em 2ch;
+    margin-block-start: 1em;
+  }
+
+  .card__meta dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--c-text-soft);
+  }
+
+  /* `#` marks a tool, everywhere on this site, so a run of technology names cannot be
+     misread for a run of prose. Inline and next to its own word, so it is not announced
+     as a list marker. */
+  .card__stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em 1.5ch;
+  }
+
+  .card__tech::before {
+    content: '#';
+    color: var(--c-line);
+  }
+
+  .card__date {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A second link, a second treatment, and it is not the card's subject: not bold, not
+     the content colour, and `--c-link` rather than the title's `--c-text`. Underlined
+     for the same reason the title is — a link that is only a different hue disappears
+     on a greyscale display. The label is the repository's own name, so it cannot be
+     read as a fifth technology the way an undecorated word in the stack could. */
+  .card__repo {
+    color: var(--c-link);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .card__repo:hover {
+    color: var(--c-link-hover);
+  }
+
+  .card__repo:focus-visible {
+    border-radius: 1px;
+  }
+</style>

@@ -4,32 +4,31 @@ import { createRequire } from 'node:module'
 import { getCollection } from 'astro:content'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
-import SessionLine from '../components/SessionLine.astro'
-import ProjectRow from '../components/ProjectRow.astro'
+import AsciiRule from '../components/AsciiRule.astro'
+import Panel from '../components/Panel.astro'
+import ProjectCard from '../components/ProjectCard.astro'
 import { skillGroups } from '../data/skills'
 import { site } from '../site.config'
 
 /**
- * Home. One session, four commands, and no frame in the content column.
+ * Home. Who this is, what it is made of, and what has been built.
  *
- * A terminal's output changes shape — a prompt, a paragraph, a table, a blank line —
- * and that variety is the signal that it is a terminal and not a stack of cards. So
- * nothing here is a `Panel`. `Panel` still owns the chrome, the nav and the footer, and
- * it still owns a case study's metadata header; the scrollback below it is not framed.
+ * THE VISUAL LANGUAGE IS NOT THE SIMULATION. The rounded frames, the monospace grid,
+ * the `ch` discipline, the elevation ramp and the `#` marker are the identity and all of
+ * them stay. What is gone is the theatre: the `user@host:~$` prompt, the command names,
+ * the numbered history, the `ls` table, and the blinking caret. A page that pretends to
+ * be a terminal is a page about pretending to be a terminal, and this one has enough to
+ * say without it. What is left is a site that looks the way it was built and reads like
+ * a portfolio rather than a transcript.
  *
- *   adrián@portfolio:~$ cat profile
- *   adrián@portfolio:~$ uname -a
- *   adrián@portfolio:~$ ls -1 projects/
- *   adrián@portfolio:~$
- *
- * The order is the argument: who I am, what this machine is, what I have built. The
- * machine block sits in the middle because it is the transition — it is the point
- * where the page stops being a claim about a person and starts being evidence.
+ * THE ORDER IS STILL THE ARGUMENT: who I am, what this is made of, what I have built.
+ * The facts block sits in the middle because it is the transition — the point where the
+ * page stops being a claim about a person and starts being evidence. Every value in it
+ * is measured at build time, which is the only reason it is allowed to exist at all.
  *
  * There is no project data in this file. `getCollection` reads every markdown file in
- * `src/content/projects/`, so adding a project adds a row here without touching this
- * page — which is the whole point of the content layer, and now the reason the NAME
- * column reads like a file name: the row is the file.
+ * `src/content/projects/`, so adding a project adds a card here without touching this
+ * page — which is the whole point of the content layer.
  *
  * Sort order is `featured` first, then the author's `order`, then newest first. The
  * tiebreak matters: two projects with the same `order` should not swap places between
@@ -45,19 +44,35 @@ const projects = (await getCollection('projects')).sort(
 
 const hasProjects = projects.length > 0
 
-/** The count line a shell would print after a listing. Never an empty box. */
-const count = `${projects.length} ${projects.length === 1 ? 'entry' : 'entries'}`
+/**
+ * The intro, in prose. Written, and marked as written.
+ *
+ * `site.tagline` above it is the one line this page was built around, and these three
+ * sentences are the first thing a reader meets in full. Every claim in them is already
+ * stated somewhere on this site or derivable from it: the span from the two projects
+ * and the skills taxonomy, the debugging angle from the tagline and the about page, the
+ * measurable constraints from the case studies themselves. Nothing here is a new fact,
+ * which is the only reason prose is safe to write on a page whose argument is that its
+ * numbers are real.
+ *
+ * TODO(you): drafted from those same sources rather than written by you. Three sentences
+ * of English on the front page, and they are yours to rewrite.
+ */
+const intro = [
+  'I build for the web and I write native Rust, and to me those are the same job: work out what a system is actually doing before you change anything. The years in technical support and root-cause analysis are where that habit came from. Most of what I have debugged, I had to reach from the outside first, which is a slow way to learn and a fast one to keep.',
+  'The projects below are the evidence rather than the pitch. What they share is that the constraints are measurable — a folder of four thousand images has a memory budget, a decode budget that is a real setting rather than a placeholder, and a coverage figure that was read off the report instead of copied out of a README.',
+]
 
 /* ------------------------------------------------------------------ *
- * uname -a. Every value below is measured, not typed.
+ * The facts block. Every value below is measured, not typed.
  *
  * The rule for this block is that it must not be able to drift. A version number
  * written into a template is a lie the day somebody runs `pnpm upgrade` and forgets
- * this file, and a version number written by hand into a `uname` line is the single
+ * this file, and a version number written by hand into a metadata line is the single
  * most forgettable string on a portfolio site. So every figure is read at build time
  * from the thing it describes, and a value that cannot be read is OMITTED — the line
- * it belonged on disappears rather than printing a plausible guess. A `uname` that
- * lies about its own kernel is worse than one that says less.
+ * it belonged on disappears rather than printing a plausible guess. A block that lies
+ * about its own toolchain is worse than one that says less.
  * ------------------------------------------------------------------ */
 
 /**
@@ -95,7 +110,7 @@ const packageManager = /^(?<name>[a-z]+)\/(?<version>\d[\w.+-]*)/.exec(
   process.env.npm_config_user_agent ?? '',
 )?.groups
 
-const shellLine = [
+const toolchainLine = [
   astroVersion && `astro ${astroVersion}`,
   packageManager && `${packageManager.name} ${packageManager.version}`,
 ]
@@ -103,15 +118,15 @@ const shellLine = [
   .join(' · ')
 
 /**
- * `Projects 2 · active 2 · other 0`, computed from the same `getCollection` result the
- * listing below renders, so the two cannot disagree.
+ * `2 · active 2 · other 0`, computed from the same `getCollection` result the cards
+ * below render, so the two cannot disagree.
  *
  * `other` is `total - active` and covers `maintenance` and `archived`, the other two
  * states in the schema. It is printed even at zero: a count of zero is information
  * (nothing is archived), and a segment that appears and disappears as projects land
  * makes the line harder to read across two visits than a fixed shape.
  *
- * NOT `shipped 1 · in progress 1`, which is what a `uname` block wants to say. `status`
+ * NOT `shipped 1 · in progress 1`, which is what a summary block wants to say. `status`
  * is a lifecycle flag and it cannot tell a released project from an unreleased one:
  * Sh_Images Reborn is finished and shipped and is still `status: active`, because
  * `active` means maintained, not launched. A shipped/in-progress split would have to be
@@ -150,20 +165,19 @@ const focusLine = (skillGroups.find((group) => group.label === 'Native & systems
  * The separator is U+00B7 MIDDLE DOT, inside the declared unicode ranges, which the
  * arrow and the check mark this design used to reach for are not.
  *
- * On the first line, `Portfolio 7.3.5` is PROVENANCE, not a version number for the
- * site: it is the version of the toolchain that compiled this page, sitting where
- * `uname -a` puts a kernel version. The `Shell` line is the reproduction recipe — the
- * same Astro version named, next to the package manager. They look like a duplicate
- * and are not: one says what built the bytes, the other says what to install to build
- * them again. If that distinction is not worth the two lines, the Astro version on
- * either one of them is the thing to cut.
+ * `Built` is PROVENANCE, not a version number for the site: it is the toolchain that
+ * compiled this page. `Toolchain` is the reproduction recipe — the same Astro version
+ * named, next to the package manager. They look like a duplicate and are not: one says
+ * what built the bytes, the other says what to install to build them again. If that
+ * distinction is not worth the two lines, the Astro version on either one of them is
+ * the thing to cut.
  */
-const uname: { label: string; value: string }[] = [
+const facts: { label: string; value: string }[] = [
   {
-    label: 'Portfolio',
+    label: 'Built',
     value: [astroVersion, nodeVersion && `Node ${nodeVersion}`, platform].filter(Boolean).join(' · '),
   },
-  { label: 'Shell', value: shellLine },
+  { label: 'Toolchain', value: toolchainLine },
   { label: 'Projects', value: projectsLine },
   { label: 'Focus', value: focusLine },
 ].filter((row) => row.value.length > 0)
@@ -177,321 +191,232 @@ const uname: { label: string; value: string }[] = [
  * written, not derived — `status: active` cannot tell a finished project from an
  * unfinished one, so there is nothing in the collection to compute this from.
  *
- * It is deliberately the quietest line on the page: `--text-sm` on the muted ramp, no
- * status light, no "available for work" badge, because whether the owner wants to
- * advertise availability is a decision he has not made yet. Unframed, the page surface
- * is `base`, where `subtext0` measures 7.37:1 — a full point better than the panel it
- * used to sit in.
+ * It is deliberately the quietest line in the intro: chrome size on the muted ramp, no
+ * status light and no "available for work" badge, because whether the owner wants to
+ * advertise availability is a decision he has not made yet. The intro is unframed, so
+ * the surface here is `base`, where `subtext0` measures 7.37:1.
  */
 const now =
   'maintaining a released desktop image viewer, and building a chat client and server alongside it.'
 ---
 
 <BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
-  <div class="session">
-    <section class="session__step">
-      <SessionLine command="cat profile" />
+  <div class="page">
+    <header class="intro">
+      <h1 class="intro__name">{site.name}</h1>
+      <p class="intro__role">{site.role}</p>
+      <p class="intro__tagline">{site.tagline}</p>
 
-      <div class="profile">
-        <h1 class="profile__name">{site.name}</h1>
-        <p class="profile__role">{site.role}</p>
-
-        <p class="profile__now">
-          <span class="profile__now-label">currently</span>
-          <span class="profile__now-sep" aria-hidden="true">│</span>
-          <span class="profile__now-text">{now}</span>
-        </p>
-
-        <p class="profile__tagline">
-          {site.tagline}<span class="caret profile__caret" aria-hidden="true">█</span>
-        </p>
+      <div class="intro__body">
+        {intro.map((paragraph) => (
+          <p class="intro__para">{paragraph}</p>
+        ))}
       </div>
+
+      <p class="now">
+        <span class="now__label">currently</span>
+        <span class="now__sep" aria-hidden="true">│</span>
+        <span class="now__text">{now}</span>
+      </p>
+    </header>
+
+    <section class="section" id="facts">
+      <AsciiRule as="div" cols={200} />
+      <h2 class="section__title">Facts</h2>
+
+      <Panel surface="panel" class="facts">
+        <dl class="facts__list">
+          {
+            facts.map((row) => (
+              <Fragment>
+                <dt class="label">{row.label}</dt>
+                <dd class="facts__value">{row.value}</dd>
+              </Fragment>
+            ))
+          }
+        </dl>
+      </Panel>
     </section>
 
-    <section class="session__step" id="system">
-      <SessionLine as="h2" command="uname -a" />
-
-      <dl class="uname">
-        {
-          uname.map((row) => (
-            <>
-              <dt class="uname__label">{row.label}</dt>
-              <dd class="uname__value">{row.value}</dd>
-            </>
-          ))
-        }
-      </dl>
-    </section>
-
-    <section class="session__step" id="projects">
-      <SessionLine as="h2" command="ls -1 projects/" />
+    <section class="section" id="projects">
+      <AsciiRule as="div" cols={200} />
+      <h2 class="section__title">Projects</h2>
 
       {
-        hasProjects && (
-          <table class="ls">
-            <thead>
-              <tr>
-                <th scope="col" data-col="name">name</th>
-                <th scope="col" data-col="status">status</th>
-                <th scope="col" data-col="date">started</th>
-                <th scope="col" data-col="stack">stack</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <ProjectRow project={project} />
-              ))}
-            </tbody>
-          </table>
-        )
-      }
-
-      <p class="ls__count">{hasProjects ? count : '(no entries)'}</p>
-
-      {
-        !hasProjects && (
-          <p class="ls__note">
+        hasProjects ? (
+          <ul class="cards" role="list">
+            {projects.map((project) => (
+              <li>
+                <ProjectCard project={project} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="cards__note">
             No projects yet. Create one markdown file in <code>src/content/projects/</code>.
           </p>
         )
       }
     </section>
-
-    <SessionLine />
   </div>
 </BaseLayout>
 
 <style>
-  /* ---- The session -----------------------------------------------------------
-     One blank line between steps, so a step is a block and the page reads as a
-     transcript rather than as a list of sections. `--leading-chrome` is unitless, so
-     this is exactly one line of leading at the body size. A step itself is flush: a
-     command's output starts on the line under the command, as it does in a shell. */
-
-  .session {
-    --session-gap: calc(var(--leading-chrome) * 1em);
+  /* ---- The page ---------------------------------------------------------------
+     A stack of three blocks with a real gap between them, sized in the chrome's own
+     leading so the vertical rhythm belongs to the character grid rather than to a
+     guessed pixel value. Each block is a grid, because a block's heading and its
+     content are two rows of one thing rather than two elements that happen to be
+     adjacent. */
+  .page {
+    --block-gap: calc(var(--leading-chrome) * 2em);
 
     display: grid;
-    row-gap: var(--session-gap);
+    row-gap: var(--block-gap);
   }
 
-  .session__step {
+  .section {
     display: grid;
   }
 
-  /* ---- cat profile ----------------------------------------------------------- */
+  /* A bare rule, then the heading, then the content. The rule is the section break and
+     the heading is the label, which is the same grammar `.prose h2` uses, so a section
+     on this page and a section inside a case study read as one family. The rule's `cols`
+     is a cap rather than a width — 200 is past any shell this site will ever render, so
+     `min(200ch, 100%)` resolves to `100%` and the rule always spans the content column
+     without this file having to know what `--shell-cols` is. */
+  .section :global(.rule) {
+    margin-block-end: 0.7em;
+  }
 
-  .profile__name {
-    font-size: var(--text-2xl);
+  /* 28px, uppercase and tracked. The size step is real; case, weight and tracking are
+     what make it a heading on a greyscale display, which is why all four are here. */
+  .section__title {
+    font-size: var(--text-xl);
     font-weight: 700;
-    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    line-height: 1.25;
+    margin-block-end: 1.2em;
   }
 
-  .profile__role {
+  /* ---- The intro -------------------------------------------------------------
+     Unframed, because this is the reading part of the page and the frame belongs to the
+     chrome. The name is the only 52px on the site: it is the one line that has to
+     carry the page, and a second line at that size would stop it being the first. */
+  .intro {
+    display: grid;
+  }
+
+  .intro__name {
+    font-size: var(--text-hero);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  /* 24px and the accent, which is the same step a card title takes. The role is a
+     label, not a headline, and letting it grow with the display scale would put two
+     competing headlines at the top of the page. */
+  .intro__role {
+    font-size: var(--text-lg);
     color: var(--c-accent);
+    line-height: 1.3;
   }
 
-  .profile__tagline {
+  /* The tagline, still the one line it has always been, as the subline under the role.
+     Same size as the prose below it and told apart by colour and by a narrower measure
+     — a size step here would make the tagline a third headline. */
+  .intro__tagline {
     margin-block-start: 0.7em;
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
     color: var(--c-text-soft);
     max-width: var(--measure-lede);
+  }
+
+  .intro__body {
+    display: grid;
+    row-gap: 1.25em;
+    margin-block-start: 1.6em;
+  }
+
+  .intro__para {
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
+    color: var(--c-text);
+    max-width: var(--measure-prose);
   }
 
   /* Three tracks, not a sentence with a `│` in it. That is the whole trick behind the
      wrapped continuation: the text is its own grid item, so when it wraps at the
      measure, the second line starts under the FIRST CHARACTER of the text instead of
      under the label. A `│` between two inline spans would wrap to column zero. */
-  .profile__now {
+  .now {
     display: grid;
     grid-template-columns: max-content max-content minmax(0, 1fr);
     align-items: baseline;
-    margin-block-start: 0.7em;
+    margin-block-start: 1.4em;
     font-size: var(--text-sm);
     color: var(--c-text-muted);
-    max-width: var(--measure-lede);
+    max-width: var(--measure-prose);
   }
 
-  .profile__now-label {
+  .now__label {
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
   }
 
-  .profile__now-sep {
+  .now__sep {
     color: var(--c-frame);
     margin-inline: 0.5ch;
   }
 
-  /* Third phase, so the page has three caret rhythms rather than one. The animation
-     itself, and the `prefers-reduced-motion` kill, are in global.css. */
-  .profile__caret {
-    margin-inline-start: 0.5ch;
-    animation-delay: 0.55s;
+  /* ---- Facts -----------------------------------------------------------------
+     Framed, because it is a block of values rather than reading, and because the frame
+     is what makes four short lines look like a panel instead of a stray list. */
+  .facts :global(.panel__body) {
+    padding-block: 1em;
+    padding-inline: 1.5ch;
   }
 
-  /* ---- uname -a --------------------------------------------------------------- */
-
-  /* `dt` and `dd` as direct grid items rather than wrapped in a pair div, so one
-     template aligns every label and every value down the page. A wrapper per pair
+  /* `dt` and `dd` as direct grid items rather than wrapped in a pair element, so one
+     template aligns every label and every value down the block. A wrapper per pair
      would give each pair its own `max-content` track and the values would step in and
-     out with their labels — the same reasoning `about.astro` uses for `role__meta`.
-     `max-content` for the label track is what makes the second column line up under
-     `Portfolio` without the label widths being hardcoded: the widest label sets the
+     out with their labels — the same reasoning the experience page uses for its own
+     metadata. `max-content` for the label track is what makes the second column line up
+     under `Built` without the label widths being hardcoded: the widest label sets the
      track, and a longer label would widen it rather than collide. */
-  .uname {
+  .facts__list {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
-    gap: 0.2em 2ch;
-    /* The same size as the label and the value, so the block reads as four lines of
-       output rather than as a definition list with a caption. The only reason the
-       labels are still quieter than the values is `--c-text-muted`, which measures
-       7.37:1 on `base` — the page is unframed, so that is the surface this sits on. */
+    gap: 0.25em 2ch;
+    /* The same size as the value, so the block reads as four lines of a table rather
+       than as a definition list with a caption. Labels are still quieter than values,
+       and both clear AA on `surface0`: `subtext0` measures 5.65:1 there and the frame
+       bounds the block to that surface. */
     font-size: var(--text-sm);
   }
 
-  .uname__label {
-    color: var(--c-text-muted);
-  }
-
-  .uname__value {
+  .facts__value {
     margin: 0;
     color: var(--c-text-soft);
   }
 
-  /* ---- ls -1 projects/ ------------------------------------------------------- */
-
-  /* `table-layout: auto`, not a fixed grid in `ch`: a real `ls` sizes each column to
-     its widest cell, and a project called `sh-something-longer` has to widen the NAME
-     column rather than collide with STATUS. The character grid is still the unit that
-     matters — the gutters are `2ch` and the column-drop breakpoints below are sized
-     against the shell's 76 cells — so the alignment is measured in characters even
-     though the widths are content-driven.
-
-     COLUMN DROP ORDER. Columns are dropped, not wrapped. A wrapped stack cell under
-     a 16-character project name and a repository turns a listing into a paragraph, and
-     the point of the table is that a value is always in the same place.
-
-     There is now exactly one column that gives way:
-
-       date  <= 710px   ten digits. A reader scanning a portfolio is looking for what a
-                         project is, whether it is alive, and whether the code is worth
-                         reading — not for the month it started.
-
-     STACK is no longer droppable, and that is the decision this table is built around.
-     The repository link used to be a SOURCE column that dropped at 380px, below most
-     phones, which meant the one path from a listing to the code was the first thing to
-     disappear. The repository now lives inside the STACK cell, and the cell that holds it
-     is the one column that is never dropped — so the destination is in the tab order and
-     on screen at every width, down to the narrowest phone this page has to work at.
-     Folding the repository into a droppable cell would have changed nothing: both would
-     have gone at the same breakpoint. NAME and STATUS are never dropped; they are the row.
-
-     ARITHMETIC. `1ch` is exactly 9px at `--text-base` — 0.9375rem is 15px and JetBrains
-     Mono's advance is 0.6em — so the shell's 76 cells are 684px. The shell is
-     `min(684px, 100% - 2rem)`, so a content width W needs a viewport of W + 32px. The
-     gutter is `2ch` = 18px per cell, minus the last child. A table will not shrink below
-     its min-content width, so these are the numbers that decide where a column has to go.
-
-     NAME and DATE are counted, not eyeballed, and they correct two figures this comment
-     used to carry: `sh-images-reborn` is 16 characters, so NAME is 144px rather than the
-     153px a 17-cell reading gave it, and `rust gpui axum proptest` is 23 characters, which
-     is where the old 207px came from and is now confirmed. `2026-08-13` is 10 cells, so
-     DATE is 90px. STATUS is the one carried measurement: `+ ACTIVE` is 62px. In a
-     monospace face a cell count is not an estimate, so a count that disagrees with the
-     old figure is a correction rather than a competing guess.
-
-     STACK is re-measured rather than carried, because its content changed. The widest
-     STACK cell is not the longest stack: it is the row that carries a repository. For
-     Sh_Images Reborn that is `rust gpui windows` + the anchor's 1ch margin +
-     `Sh_Images-Reborn` = 17 + 1 + 16 = 34 cells = 306px, and `ProjectRow` carries the
-     label arithmetic. Sh_Nexus's `rust gpui axum proptest` is 23 cells = 207px and it has
-     `links: []`, so it is not the widest cell and does not set the column.
-
-       all four columns  name 144 + status 62 + date 90 + stack 306 + 3 gutters 54
-                        = 656px, so the viewport must be >= 688px
-       date dropped     name 144 + status 62 + stack 306 + 2 gutters 36
-                        = 548px, so the viewport must be >= 580px
-
-     The breakpoint is 710px: 688px of measured minimum plus 22px of slack, the same band
-     and the same 22px the five-column table's first breakpoint used. Above 710px the shell
-     is already capped at its 684px and the four-column row has 28px to spare inside it. At
-     the breakpoint itself the widest row is the three-column 548px, 136px inside the same
-     684px. It also cannot be lowered much: at 689px the shell is 657px and the four-column
-     row wants 656, so one pixel is the entire margin. The breakpoint is pinned by the
-     repository, not by the date.
-
-     Re-derive both numbers if a project ships a longer repository name, and in particular
-     when the TODO in `sh-nexus.md` is answered: a row with a 23-cell stack AND a repository
-     is wider than any row this arithmetic has measured, and a breakpoint carried over from
-     here would overflow the shell instead of dropping a column. */
-  .ls {
-    width: 100%;
-    font-size: var(--text-base);
-  }
-
-  .ls :global(th),
-  .ls :global(td) {
-    padding-block: 0.35em;
-    /* The gutter, in cells. */
-    padding-inline-end: 2ch;
-    text-align: start;
-    white-space: nowrap;
-  }
-
-  .ls :global(th:last-child),
-  .ls :global(td:last-child) {
-    padding-inline-end: 0;
-  }
-
-  .ls thead th {
-    font-size: var(--text-micro);
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-label);
-    color: var(--c-text-muted);
-    /* A rule that carries meaning: it separates the column names from the data, which
-       is the one `--c-line-strong` use on this page. Row rules below are division
-       only, so they take the subtle token. */
-    border-block-end: 1px solid var(--c-line-strong);
-  }
-
-  .ls tbody :global(th),
-  .ls tbody :global(td) {
-    border-block-end: 1px solid var(--c-line-subtle);
-  }
-
-  .ls tbody :global(tr:last-child th),
-  .ls tbody :global(tr:last-child td) {
-    border-block-end: 0;
-  }
-
-  /* A raised surface, not a colour change: the row is on `base` and this lifts it to
-     `surface0`, which is the elevation ramp doing what it is for. Every colour in the
-     row clears AA there — `subtext0` measures 5.65:1 and the accents are documented as
-     safe to `surface1`. */
-  .ls tbody :global(tr:hover) {
-    background-color: var(--surface-panel);
-  }
-
-  /* See the note above for the order and the arithmetic. It is `display: none` rather
-     than a smaller font or a collapsed width for the reason a hidden link must leave
-     the tab order too: a cell that is dropped is gone, and an anchor that is still
-     focusable inside a `visibility: hidden` or `opacity: 0` cell is a focus stop on
-     something nobody can see. DATE is the only cell that drops, and it holds no link —
-     the repository lives in STACK, which never drops, so at every width the row has
-     exactly the links it shows. */
-  @media (max-width: 710px) {
-    .ls :global([data-col='date']) {
-      display: none;
-    }
-  }
-
-  .ls__count {
-    font-size: var(--text-sm);
-    color: var(--c-text-muted);
+  /* ---- Projects --------------------------------------------------------------
+     One column, full width: at 88 shell cells and 20px prose, two columns would give
+     each summary about 31 characters, and 31 characters is not a sentence. The card
+     explains the rest. `role="list"` is not decoration — `list-style: none` makes Safari
+     drop list semantics entirely, and this list is the page's content. */
+  .cards {
+    display: grid;
+    row-gap: 2ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
   /* For whoever runs the site, not for whoever reads it. */
-  .ls__note {
+  .cards__note {
     font-size: var(--text-sm);
     color: var(--c-text-muted);
   }
