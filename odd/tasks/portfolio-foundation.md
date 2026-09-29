@@ -228,6 +228,23 @@ document width == client width        (no horizontal scrollbar)
 elements wider than the shell:        0
 ```
 
+Motion, with the preference emulated explicitly in both directions — a headless browser
+reports `reduce` by default, so the control case has to be asked for:
+
+```text
+prefers-reduced-motion: no-preference
+  body::before  animation-name: scanline-drift  duration: 8s   iteration: infinite
+  .caret elements in the DOM: 0
+  running animations: scanline-drift
+
+prefers-reduced-motion: reduce
+  body::before  animation-name: none  duration: 0s  iteration: 1
+  .caret elements in the DOM: 0
+  running animations: none
+
+console errors and uncaught exceptions: 0
+```
+
 The `links: []` project, which is a real case and not a hypothetical:
 
 ```text
