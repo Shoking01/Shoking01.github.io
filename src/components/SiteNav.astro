@@ -1,54 +1,125 @@
 ---
 import Panel from './Panel.astro'
-import { site } from '../site.config'
+import SessionLine from './SessionLine.astro'
 
 /**
- * The nav is one framed row: identity on the left, destinations on the right, the
- * active one marked by more than colour. `aria-current="page"` carries the state for
- * assistive tech, and the `>` marker plus the weight change carry it visually, so the
- * answer to "where am I" never depends on hue alone.
+ * The nav is the session, not a menu.
+ *
+ *   adrián@portfolio:~$ cat about█
+ *     1  cat profile        2  ls -1 projects/
+ *
+ * One line says where you are — the command for the route you are on — and one line
+ * lists the other commands. Every destination in the nav is a real `<a href>`, so the
+ * grammar costs nothing: deep links, the back button and `ClientRouter` all still work
+ * exactly as they did when this was `home / projects / about`.
+ *
+ * HONESTLY, WHAT THE NUMBERED LIST IS. It is a STATIC MAP OF THE SESSION, not a record
+ * of it. A real `history` lists the commands THIS visitor ran, in THIS order, since
+ * THIS login. Without client-side JavaScript the server cannot know any of that: every
+ * document here is prerendered, so the list is byte-identical on every request and
+ * says nothing about where anyone has been. It is a menu wearing a shell's grammar,
+ * and that is the whole of the trick.
+ *
+ * NUMBERS, NOT TIMESTAMPS, and that is the honest choice rather than the easy one. A
+ * timestamp would have to be invented, because the one fact a server has — the instant
+ * of the request — is not a time the visitor did anything. `1 2 3` is a claim this
+ * document can actually support: these are commands, in this order.
+ *
+ * There is deliberately NO `Last login:` line. It is the most convincing thing a
+ * terminal's chrome can print, and printing it here would be a fabricated fact about
+ * the visitor: the server has a request, not a session, and a date would be a lie with
+ * a timestamp on it. Same reason there is no uptime, no `$?`, and no hostname that
+ * claims to be a real machine.
+ *
+ * The command's own line — `adrián@portfolio:` — is `SessionLine`'s, which reads the
+ * login name out of `site.name` with the same split and the same accent the old brand
+ * link used, so renaming the owner renames both and a shell prompt cannot spell the
+ * owner two different ways in one viewport. That derivation lives in ONE place, in the
+ * component that renders the prompt, which is the reason this file no longer imports
+ * `site` at all: there is no second copy of the rule here to fall out of sync.
+ *
+ * The caret on the prompt is a plain `.caret` with no delay, so the three phases the
+ * site already had are intact: this one at 0s, a page's own prompt at 0.3s, the profile
+ * caret at 0.55s. It is a sibling of `SessionLine` rather than a prop of it on purpose
+ * — `SessionLine` renders a caret only on a prompt that is WAITING, and a nav prompt
+ * that has already run its command is not waiting.
  */
 
-const links = [
-  { label: 'home', href: '/' },
-  { label: 'projects', href: '/#projects' },
-  { label: 'about', href: '/about' },
+interface Command {
+  /** The command, exactly as the prompt prints it. */
+  command: string
+  /** Where it goes. The current route is a link too, carrying `aria-current="page"`. */
+  href: string
+  /** Where the prompt says you are while this command is the current one. */
+  path: string
+  /** Plain English, because `cat about` is not a destination a screen reader can use. */
+  label: string
+}
+
+/**
+ * The whole session, in the order the site runs it. The history numbers are this
+ * array's indices, so a number can never point at a different route than the command
+ * beside it.
+ */
+const SESSION: Command[] = [
+  { command: 'cat profile', href: '/', path: '~', label: 'home' },
+  { command: 'ls -1 projects/', href: '/#projects', path: '~', label: 'projects' },
+  { command: 'cat about', href: '/about', path: '~/about', label: 'about' },
 ]
 
-const current = Astro.url.pathname
-const isActive = (href: string) =>
-  href === '/' ? current === '/' : current.startsWith(href.split('#')[0]!) && href !== '/#projects'
+/**
+ * A case study is a command too, and this is why.
+ *
+ * The prompt has to say something true on every route. Claiming `cat profile` while the
+ * reader is halfway through a case study would be a lie, and the case-study page is out
+ * of scope to change, so the grammar absorbs the detail route: you are inside one of the
+ * files the listing names, so you are in `projects/` running `cat` on it. The file name
+ * is `project.id` — the same string the row below prints — plus the `.md` it really has
+ * on disk, so the command is executable as written.
+ *
+ * Nothing in `SESSION` matches a project route, which is the honest outcome: the reader
+ * is in none of the three nav destinations, so no history entry claims to be current and
+ * `aria-current="page"` stays on the prompt alone.
+ */
+const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/'
+
+const projectId = pathname.startsWith('/projects/') ? pathname.slice('/projects/'.length) : ''
+
+const current: Command = SESSION[pathname === '/' ? 0 : pathname.startsWith('/about') ? 2 : -1] ?? {
+  command: projectId ? `cat ${projectId}.md` : 'cat profile',
+  href: pathname,
+  path: projectId ? '~/projects' : '~',
+  label: projectId,
+}
+
+/** The other commands, still in `SESSION` order and still numbered by their own index. */
+const history = SESSION.flatMap((entry, index) =>
+  entry === current ? [] : [{ ...entry, n: index + 1 }],
+)
 ---
 
 <Panel surface="chrome" class="nav">
-  <nav class="nav__row" aria-label="Primary">
-    <a class="nav__brand" href="/">
-      <span class="nav__prompt" aria-hidden="true">{site.name.split(/\s+/)[0]}@</span><span
-        class="nav__host"
-        >portfolio</span
-      ><span class="caret" aria-hidden="true">█</span>
-    </a>
+  <nav class="nav__session" aria-label="Session">
+    <div class="nav__prompt">
+      <SessionLine command={current.command} path={current.path} href={current.href} />
+      <span class="caret nav__caret" aria-hidden="true">█</span>
+    </div>
 
-    <ul class="nav__links">
-      {
-        links.map((link) => {
-          const active = isActive(link.href)
-          return (
+    {
+      history.length > 0 && (
+        <ul class="nav__history" role="list">
+          {history.map(({ n, href, command, label }) => (
             <li>
-              <a
-                class="nav__link"
-                href={link.href}
-                aria-current={active ? 'page' : undefined}
-                data-active={active ? 'true' : undefined}
-              >
-                {active && <span class="nav__marker" aria-hidden="true">&gt;</span>}
-                {link.label}
+              <a class="nav__cmd" href={href}>
+                <span class="nav__cmd-num" aria-hidden="true">{n}</span>
+                <span class="visually-hidden">{label}: </span>
+                <span class="nav__cmd-text">{command}</span>
               </a>
             </li>
-          )
-        })
-      }
-    </ul>
+          ))}
+        </ul>
+      )
+    }
   </nav>
 </Panel>
 
@@ -59,61 +130,64 @@ const isActive = (href: string) =>
     z-index: 3;
   }
 
-  .nav__row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5ch 2ch;
-  }
-
-  .nav__brand {
-    color: var(--c-text);
-    text-decoration: none;
-    font-weight: 700;
-    white-space: nowrap;
+  .nav__session {
+    display: grid;
+    /* Tight, not zero: the history reads as output indented under its own prompt
+       rather than as a second, unrelated row of chrome. */
+    row-gap: 0.3em;
+    font-size: var(--text-sm);
   }
 
   .nav__prompt {
-    color: var(--c-accent);
-  }
-
-  .nav__host {
-    color: var(--c-text-soft);
-    font-weight: 400;
-  }
-
-  /* The caret blinks, and global.css turns it off under prefers-reduced-motion. It is
-     decorative; the brand text beside it carries the meaning. */
-  .nav__brand .caret {
-    margin-inline-start: 0.25ch;
-  }
-
-  .nav__links {
     display: flex;
-    gap: 2ch;
+    align-items: baseline;
+  }
+
+  /* Phase one of three. `global.css` owns the blink and the reduced-motion kill; this
+     sets no delay at all, so it blinks at 0s against a page prompt at 0.3s and the
+     profile caret at 0.55s. */
+  .nav__caret {
+    margin-inline-start: 0.5ch;
+  }
+
+  /* Two cells of indent, the same two cells the about page indents nested output by,
+     because that is what a command's continuation looks like. `flex-wrap` rather than a
+     grid so the entries sit as close together as they fit and wrap only when the shell
+     is too narrow for two, instead of leaving a column-shaped hole. */
+  .nav__history {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15em 2.5ch;
     margin: 0;
     padding: 0;
+    padding-inline-start: 2ch;
     list-style: none;
   }
 
-  .nav__link {
+  /* `role="list"` on the `<ul>` is not decoration: `list-style: none` makes Safari drop
+     list semantics entirely, and this list is numbered, so the numbers are the list. */
+  .nav__cmd {
+    display: inline-flex;
+    align-items: baseline;
+    /* Two cells between the number and the command, which is what a numbered history
+       looks like. The numbers are one digit wide because the session has fewer than
+       ten commands; a tenth would shift the column by a cell, and that is a shell's
+       problem, not a layout bug. */
+    gap: 2ch;
     color: var(--c-text-soft);
     text-decoration: none;
+    white-space: nowrap;
   }
 
-  .nav__link:hover {
+  .nav__cmd:hover {
     color: var(--c-link-hover);
     text-decoration: underline;
   }
 
-  .nav__link[aria-current] {
-    color: var(--c-text);
-    font-weight: 700;
-  }
-
-  .nav__marker {
-    color: var(--c-accent);
-    margin-inline-end: 0.25ch;
+  /* Dimmed, and the quietest legal rung: `subtext1` measures 9.26:1 on `base` and the
+     nav sits on `chrome`, which is darker. The number is one step quieter again
+     (`subtext0`), because it is an ordinal rather than a command. */
+  .nav__cmd-num {
+    color: var(--c-text-muted);
   }
 </style>

@@ -20,11 +20,12 @@ import { site } from '../site.config'
  *   command    --c-text      the only thing on the line that is content
  *
  * The login name is the owner's first name read from `site.name` rather than typed
- * here, so renaming the owner renames the prompt. `SiteNav` derives its brand prompt
- * from the same field with the same split, and it keeps the accent: a shell prompt
- * that spells the owner two different ways in the same viewport is a bug, not a style.
- * ASCII the accent away if you ever want the login to look like a real `unix` account —
- * it is one `.toLowerCase()` away from `adrian`.
+ * here, so renaming the owner renames the prompt. This is the only place that split
+ * exists: `SiteNav` used to build its own brand prompt from the same field with the
+ * same casing rule, and when the nav became a prompt it dropped that copy rather than
+ * keeping two derivations to keep in sync — so a shell prompt cannot spell the owner
+ * two different ways in one viewport. ASCII the accent away if you ever want the login
+ * to look like a real `unix` account — it is one `.toLowerCase()` away from `adrian`.
  *
  * A cursor appears only on a prompt that is waiting for input, so `caret` defaults to
  * the resting case. A caret after a command that has already run would be a lie about
@@ -56,6 +57,17 @@ interface Props {
    * `AsciiRule`'s label used to do.
    */
   as?: 'p' | 'h1' | 'h2' | 'h3' | 'div'
+  /**
+   * Make the command a link and mark it as the current page.
+   *
+   * `SiteNav` uses this for the one command that matches the route being viewed, so
+   * the current page is a real, focusable anchor carrying `aria-current="page"`
+   * rather than a span that only LOOKS current — `aria-current` has nowhere else to
+   * live if the prompt is plain text. It is only ever true for the page you are on,
+   * which is the sole thing a prompt link is for; a command that points somewhere
+   * else would be a menu item wearing a prompt, which is what this replaced.
+   */
+  href?: string
   class?: string
 }
 
@@ -65,6 +77,7 @@ const {
   host = 'portfolio',
   caret,
   as: Tag = 'p',
+  href,
   class: className,
 } = Astro.props
 
@@ -77,9 +90,14 @@ const cursor = caret ?? !command
   <span class="session__who" aria-hidden="true">{user}@{host}</span><span
     class="session__sep"
     aria-hidden="true">:</span><span class="session__path" aria-hidden="true">{path}</span
-  ><span class="session__dollar" aria-hidden="true">$</span>{command && (
-    <span class="session__command">{command}</span>
-  )}{cursor && <span class="caret session__caret" aria-hidden="true">█</span>}
+  ><span class="session__dollar" aria-hidden="true">$</span>{command &&
+    (href ? (
+      <a class="session__command session__command--link" href={href} aria-current="page">
+        {command}
+      </a>
+    ) : (
+      <span class="session__command">{command}</span>
+    ))}{cursor && <span class="caret session__caret" aria-hidden="true">█</span>}
 </Tag>
 
 <style>
@@ -116,6 +134,21 @@ const cursor = caret ?? !command
   /* The command is content, so it takes the content colour and the content weight. */
   .session__command {
     color: var(--c-text);
+  }
+
+  /* A command that is a link — the nav's current page. Weight AND underline, so the
+     affordance survives a monochrome display, Windows high contrast and a greyscale
+     print; the weight is also what separates the current page from the dimmed history
+     beside it, which means the state is not carried by colour. */
+  .session__command--link {
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .session__command--link:hover {
+    color: var(--c-link-hover);
   }
 
   /* Offset from the nav's caret so the two do not blink in lockstep, and from the
