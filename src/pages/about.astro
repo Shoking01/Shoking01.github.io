@@ -100,7 +100,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     <h1 class="visually-hidden">About</h1>
 
     <section class="section" id="experience">
-      <AsciiRule as="div" cols={200} />
+      <AsciiRule as="div" cols={88} />
       <h2 class="section__title">Experience</h2>
 
       {
@@ -180,7 +180,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     </section>
 
     <section class="section" id="skills">
-      <AsciiRule as="div" cols={200} />
+      <AsciiRule as="div" cols={88} />
       <h2 class="section__title">Skills</h2>
 
       <p class="languages">
@@ -213,23 +213,33 @@ const languages = 'Spanish native, English professional working proficiency (B2+
   /* ---- The page ---------------------------------------------------------------
      The same two-block grammar as the home page, so the two pages read as one site:
      a real gap between blocks, sized in the chrome's own leading, and each block a
-     grid of heading and content rather than a stack of adjacent elements. */
+     grid of heading and content rather than a stack of adjacent elements.
+
+     Every single-column grid declares its track, and on this page that is load-bearing
+     rather than stylistic. An implicit `auto` track is sized by its content, and
+     `AsciiRule` holds a run of 256 box-drawing characters that is meant to be clipped
+     rather than counted — so the track asks for the run's max-content size, `fr` does
+     not cap the answer, and the content column measures 2304px inside a 773px shell.
+     `minmax(0, 1fr)` resolves the track against the container's definite width instead,
+     and the long runs clip as they were always meant to. */
   .page {
     --block-gap: calc(var(--leading-chrome) * 2em);
 
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     row-gap: var(--block-gap);
   }
 
   .section {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* A bare rule, then the heading. The rule is the section break and the heading is the
      label, which is the grammar `.prose h2` uses inside a case study, so a section here
-     and a section in a case study are one family. `cols` is a cap and not a width — 200
-     is past any shell this site will render, so `min(200ch, 100%)` is `100%` and this
-     file never has to know what `--shell-cols` is. */
+     and a section in a case study are one family. `cols` is 88, the shell's own cell
+     count, so the rule is exactly as wide as the frame it divides; it has to track
+     `--shell-cols` in `BaseLayout.astro`. */
   .section :global(.rule) {
     margin-block-end: 0.7em;
   }
@@ -251,6 +261,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
      content the page is padding itself with. */
   .roles {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     row-gap: 2.4em;
     margin: 0;
     padding: 0;
@@ -426,6 +437,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     gap: 1.6ch 3ch;
     margin-block-start: 1.4em;
     margin-block-end: 0;
+    min-width: 0;
   }
 
   /* The group headings carry the `.label` utility rather than a local copy of it: this

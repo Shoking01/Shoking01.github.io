@@ -221,7 +221,7 @@ const now =
     </header>
 
     <section class="section" id="facts">
-      <AsciiRule as="div" cols={200} />
+      <AsciiRule as="div" cols={88} />
       <h2 class="section__title">Facts</h2>
 
       <Panel surface="panel" class="facts">
@@ -239,7 +239,7 @@ const now =
     </section>
 
     <section class="section" id="projects">
-      <AsciiRule as="div" cols={200} />
+      <AsciiRule as="div" cols={88} />
       <h2 class="section__title">Projects</h2>
 
       {
@@ -267,24 +267,38 @@ const now =
      leading so the vertical rhythm belongs to the character grid rather than to a
      guessed pixel value. Each block is a grid, because a block's heading and its
      content are two rows of one thing rather than two elements that happen to be
-     adjacent. */
+     adjacent.
+
+     EVERY SINGLE-COLUMN GRID HERE DECLARES ITS TRACK, and that is load-bearing rather
+     than stylistic. A grid with no `grid-template-columns` has one implicit `auto`
+     track, and an `auto` track is sized by its content — which is a trap on this site
+     specifically, because `Panel` and `AsciiRule` both hold runs of 256 box-drawing
+     characters that are clipped rather than counted. An `auto` track asks for the
+     MAX-CONTENT size of that run, `fr` does not cap the answer, and the whole content
+     column measured 2304px inside a 773px shell. `minmax(0, 1fr)` is the fix: the track
+     is then resolved against the container's definite width, the long runs clip as they
+     were always meant to, and the page stops opening sideways. Measured before and
+     after, in a headless browser. */
   .page {
     --block-gap: calc(var(--leading-chrome) * 2em);
 
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     row-gap: var(--block-gap);
   }
 
   .section {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* A bare rule, then the heading, then the content. The rule is the section break and
      the heading is the label, which is the same grammar `.prose h2` uses, so a section
-     on this page and a section inside a case study read as one family. The rule's `cols`
-     is a cap rather than a width — 200 is past any shell this site will ever render, so
-     `min(200ch, 100%)` resolves to `100%` and the rule always spans the content column
-     without this file having to know what `--shell-cols` is. */
+     on this page and a section inside a case study read as one family. `cols` is 88,
+     the shell's own cell count, so the rule is exactly as wide as the frame it divides
+     and `min(88ch, 100%)` falls back to the container below that. It has to track
+     `--shell-cols` in `BaseLayout.astro`; a smaller number is a rule that stops short
+     of the frame. */
   .section :global(.rule) {
     margin-block-end: 0.7em;
   }
@@ -306,6 +320,7 @@ const now =
      carry the page, and a second line at that size would stop it being the first. */
   .intro {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .intro__name {
@@ -336,6 +351,7 @@ const now =
 
   .intro__body {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     row-gap: 1.25em;
     margin-block-start: 1.6em;
   }
@@ -409,6 +425,7 @@ const now =
      drop list semantics entirely, and this list is the page's content. */
   .cards {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     row-gap: 2ch;
     margin: 0;
     padding: 0;
