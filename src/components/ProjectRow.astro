@@ -15,16 +15,31 @@ import StatusTag from './StatusTag.astro'
  * file name. Label in Name holds: the visible string is a suffix of the name, not a
  * replacement for it.
  *
- * The whole row is the hit target, with no script: the link's `::after` is stretched
- * over the row. `position: relative` is set on the row AND on the cells, because a
- * `::after` with no positioned ancestor resolves against the initial containing block —
- * which is the entire viewport. If a browser ever ignored relative positioning on a
- * table row, the fallback is the anchor's own cell rather than a link painted over the
- * whole page.
+ * TWO LINKS IN ONE ROW, and why this is a name cell and a source cell rather than one
+ * stretched link. The row used to be the hit target, with the name link's `::after`
+ * stretched over it — which is fine until a second destination arrives, because an
+ * anchor inside an anchor is invalid HTML and both destinations break in every browser.
+ * There is no way to nest, and no `z-index` makes it legal. So the stretched
+ * pseudo-element is gone and the two destinations are two cells:
+ *
+ *   name    -> the case study, the row's reason for existing
+ *   source  -> the project's first outbound link, which is its repository
+ *
+ * The cost is honest and worth naming: the row is no longer one large hit target, so
+ * the hit area is the name text. In exchange the source is reachable, which on a
+ * job-hunting site is worth more than a bigger target — a recruiter's next click is
+ * almost always "let me read the code".
+ *
+ * Tab order is the DOM order and it is the right one: case study first, because that is
+ * what the row is for, then source. Both are reachable by keyboard, and because the
+ * source column is dropped with `display: none` at narrow widths rather than hidden with
+ * `visibility` or `opacity`, a dropped link leaves the tab order entirely instead of
+ * becoming a focus stop on an invisible anchor.
  *
  * The name cell is a `<th scope="row">`: it names the row, so it is a header, and the
- * status, the date and the stack are announced against it instead of as a bare list of
- * strings. `th` is not a heading element, so this adds nothing to the page outline.
+ * status, the date, the stack and the source are announced against it instead of as a
+ * bare list of strings. `th` is not a heading element, so this adds nothing to the page
+ * outline.
  */
 
 interface Props {
@@ -32,9 +47,25 @@ interface Props {
 }
 
 const { project } = Astro.props
-const { status, date, stack } = project.data
+const { status, date, stack, links } = project.data
 const href = `/projects/${project.id}`
 const iso = date.toISOString().slice(0, 10)
+
+/**
+ * The first outbound link, and the only one rendered here.
+ *
+ * `links: []` is valid and one entry has it, so the cell has to be able to collapse
+ * rather than render an empty or broken anchor. `undefined` is falsy, so the cell is
+ * simply not emitted and the column is one cell shorter for that row — which is what a
+ * `ls` of a directory with a file missing its metadata actually looks like. The column
+ * heading collapses too: `index.astro` only emits it when at least one project has a
+ * link, so an all-empty collection produces no empty column at the top of the table.
+ *
+ * First link only, deliberately. A row wide enough for a case study, a repository, a
+ * live demo and a changelog is a row that fits on none of the widths this page has to
+ * work at, and the rest are one click away on the case study itself.
+ */
+const source = links[0]
 ---
 
 <tr class="row">
@@ -53,15 +84,19 @@ const iso = date.toISOString().slice(0, 10)
   </td>
 
   <td class="row__cell row__cell--stack" data-col="stack">{stack.join(' ')}</td>
+
+  {
+    source && (
+      <td class="row__cell row__cell--source" data-col="source">
+        <a class="row__source" href={source.href} rel="noopener">
+          {source.label}
+        </a>
+      </td>
+    )
+  }
 </tr>
 
 <style>
-  /* See the note above on why this is set twice. */
-  .row,
-  .row > * {
-    position: relative;
-  }
-
   .row__cell {
     vertical-align: baseline;
     white-space: nowrap;
@@ -88,17 +123,33 @@ const iso = date.toISOString().slice(0, 10)
   }
 
   /* The focus ring is the global `:focus-visible` two-tone outline, so it is a shape
-     change and not a colour change, and it clears 5.15:1 even on the hover surface. */
+     change and not a colour change, and it clears 5.15:1 even on the hover surface.
+     `border-radius` only, so the ring is a crisp rectangle around the name rather than
+     a pill around a whole row. */
   .row__link:focus-visible {
     border-radius: 1px;
   }
 
-  /* The stretched hit target. Transparent, so the row's own hover surface still shows
-     through it, and it carries no text, so it is not a second copy of the link label. */
-  .row__link::after {
-    content: '';
-    position: absolute;
-    inset: 0;
+  /* A second link, a second treatment. It is not the row's subject, so it is not bold
+     and it is not the content colour: it takes `--c-link`, which is a documented
+     accent for exactly this and clears AA on the row's hover surface. It is underlined
+     for the same reason the name is, because a link that is only a different hue is a
+     link that disappears on a greyscale display. Two links in a row, two underlines,
+     one of them bold — the difference is carried by weight and position, not by hue. */
+  .row__source {
+    color: var(--c-link);
+    font-weight: 400;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  .row__source:hover {
+    color: var(--c-link-hover);
+  }
+
+  .row__source:focus-visible {
+    border-radius: 1px;
   }
 
   .row__cell--date,

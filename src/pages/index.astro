@@ -37,6 +37,17 @@ const projects = (await getCollection('projects')).sort(
 
 const hasProjects = projects.length > 0
 
+/**
+ * Whether the source column has anything to say.
+ *
+ * A heading over an empty column is worse than no heading: it promises a destination
+ * for every row and delivers one for some, and a reader who counts the `source` cells
+ * is right to feel the table lied to them. So the column is emitted only when at least
+ * one project actually has an outbound link, and per-row collapse is `ProjectRow`'s
+ * job — a project with `links: []` simply has one cell fewer than its neighbours.
+ */
+const hasSource = projects.some((project) => project.data.links.length > 0)
+
 /** The count line a shell would print after a listing. Never an empty box. */
 const count = `${projects.length} ${projects.length === 1 ? 'entry' : 'entries'}`
 
@@ -92,6 +103,7 @@ const now =
                 <th scope="col" data-col="status">status</th>
                 <th scope="col" data-col="date">started</th>
                 <th scope="col" data-col="stack">stack</th>
+                {hasSource && <th scope="col" data-col="source">source</th>}
               </tr>
             </thead>
             <tbody>
@@ -194,16 +206,38 @@ const now =
      against the shell's 76 cells — so the alignment is measured in characters even
      though the widths are content-driven.
 
-     Breakpoint arithmetic, at the body size where `1ch` is exactly 9px and the shell is
+     COLUMN DROP ORDER. Columns are dropped, not wrapped. A wrapped stack column under
+     a 17-character project name turns a listing into a paragraph, and the point of the
+     table is that a value is always in the same place. The order below is a value
+     judgement and it is the reverse of the one a listing page usually wants:
+
+       1. stack    <= 710px   widest and least load-bearing. Four items is 22 cells,
+                               and the stack is on the case study in full.
+       2. date     <= 480px   ten digits. A reader scanning a portfolio is looking for
+                               what a project is and whether it is alive, not for the
+                               month it started.
+       3. source   <= 380px   LAST, and this is the one that is easy to get backwards.
+                               Source is the optional column that actually gets a
+                               recruiter to the code, which is the thing they came for,
+                               and it is the column a recruiter cannot survive without.
+                               Name and status are never dropped: they are the row.
+
+     Arithmetic, at the body size where `1ch` is exactly 9px and the shell is
      `min(76ch, 100% - 2rem)`. A table will not shrink below its min-content width, so
-     these are the numbers that decide where a column has to go:
+     these are the numbers that decide where a column has to go. The first three are the
+     owner's measured widths, carried over unchanged; SOURCE is added, measured the same
+     way — `source` is 6 cells at `--text-base` (54px) plus one `2ch` gutter (18px) =
+     72px — so the existing figures are extended rather than re-guessed:
 
-       all four columns   name 153 + status 62 + date 90 + stack 207 + 3 gutters 54
-                          = 566px, so the viewport must be >= 598px
-       stack dropped      name 153 + status 62 + date 90 + 2 gutters 36 = 341px
-                          so the viewport must be >= 373px
+       all five columns  name 153 + status 62 + date 90 + stack 207 + source 72
+                          + 4 gutters 72 = 656px, so the viewport must be >= 688px
+       stack dropped     name 153 + status 62 + date 90 + source 72
+                          + 3 gutters 54 = 431px, so the viewport must be >= 463px
+       date dropped      name 153 + status 62 + source 72
+                          + 2 gutters 36 = 323px, so the viewport must be >= 355px
 
-     The breakpoints carry slack on top of those minimums: 640px and 420px. */
+     The three breakpoints carry 22px, 17px and 25px of slack on top of those
+     minimums, in the same spirit as the 42px and 47px the two-column version used. */
   .ls {
     width: 100%;
     font-size: var(--text-base);
@@ -253,20 +287,24 @@ const now =
     background-color: var(--surface-panel);
   }
 
-  /* Columns are dropped, not wrapped. A wrapped stack column under a 17-character
-     project name turns a listing into a paragraph, and the point of the table is that
-     a value is always in the same place. Stack goes first because it is the widest and
-     the least load-bearing: it is on the case study in full, and the name alone already
-     says what a project is. The date goes second, and what is left is the two columns a
-     reader actually scans: what it is, and whether it is alive. */
-  @media (max-width: 640px) {
+  /* See the note above for the order and the arithmetic. Each rule is `display: none`
+     rather than a smaller font or a collapsed width, because a hidden link must leave
+     the tab order too: a `source` anchor that is still focusable but not visible is
+     worse than no source column at all. */
+  @media (max-width: 710px) {
     .ls :global([data-col='stack']) {
       display: none;
     }
   }
 
-  @media (max-width: 420px) {
+  @media (max-width: 480px) {
     .ls :global([data-col='date']) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .ls :global([data-col='source']) {
       display: none;
     }
   }
