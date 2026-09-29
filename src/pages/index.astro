@@ -27,12 +27,34 @@ const projects = (await getCollection('projects')).sort(
 )
 
 const hasProjects = projects.length > 0
+
+/**
+ * What the owner is doing right now, in one sentence.
+ *
+ * Both halves are already stated on this site rather than asserted here: Sh_Images
+ * Reborn is a finished, released viewer that is `status: active` and still being
+ * maintained, and Sh_Nexus says in its own words that it is in progress. The line is
+ * written, not derived — `status: active` cannot tell a finished project from an
+ * unfinished one, so there is nothing in the collection to compute this from.
+ *
+ * It sits between the role and the tagline, not after the tagline, so the blinking caret
+ * stays at the visual end of the hero. And it is deliberately the quietest line on the
+ * page: no status light, no "available for work" badge, because whether the owner wants
+ * to advertise availability is a decision he has not made yet.
+ */
+const now =
+  'maintaining a released desktop image viewer, and building a chat client and server alongside it.'
 ---
 
 <BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
   <Panel class="hero">
     <h1 class="hero__name">{site.name}</h1>
     <p class="hero__role">{site.role}</p>
+    <p class="hero__now">
+      <span class="hero__now-label">currently</span>
+      <span class="hero__sep" aria-hidden="true">│</span>
+      <span>{now}</span>
+    </p>
     <p class="hero__tagline">
       {site.tagline}<span class="caret hero__caret" aria-hidden="true">█</span>
     </p>
@@ -79,6 +101,27 @@ const hasProjects = projects.length > 0
   .hero__tagline {
     color: var(--c-text-soft);
     max-width: var(--measure-lede);
+  }
+
+  /* The quietest line in the hero, and deliberately so: a size step below the tagline,
+     the muted ramp, and a `│` borrowed from the footer's separator grammar. The panel is
+     `surface0`, which is the last surface `--c-text-muted` is documented as safe on
+     (5.65:1), so this is the highest the line can go without giving up its subordination. */
+  .hero__now {
+    margin-block-start: 0.7em;
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
+    max-width: var(--measure-lede);
+  }
+
+  .hero__now-label {
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+  }
+
+  .hero__sep {
+    color: var(--c-frame);
+    margin-inline: 0.5ch;
   }
 
   /* Offset from the nav's caret so the two do not blink in lockstep. */
