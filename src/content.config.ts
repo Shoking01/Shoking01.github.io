@@ -88,8 +88,8 @@ const projects = defineCollection({
  *     still works somewhere, and a forgotten `current` fails loudly instead of rendering
  *     a role that closed years ago as still open.
  *   - `granularity` records whether the source dated the role by month or by year.
- *     `z.coerce.date()` cannot tell `2025` from `2025-01-01` ÔÇö both arrive as the first
- *     of the month ÔÇö so rendering "Jan 2025" for a year the owner only ever said "2025"
+ *     `z.coerce.date()` cannot tell `2025` from `2025-01-01` — both arrive as the first
+ *     of the month — so rendering "Jan 2025" for a year the owner only ever said "2025"
  *     would state a precision the content does not have. Month is the default because it
  *     is the finer of the two, and a wrong month is a smaller error than a wrong year.
  *   - `summary` is optional, unlike `projects.summary`. A CV states what was done rather
@@ -101,6 +101,26 @@ const projects = defineCollection({
  * `Bug Triage: Isolated complex code defects` is a YAML mapping, not a string, the moment
  * it is unquoted, and the schema error then names the wrong field.
  */
+/**
+ * A role boundary from frontmatter, as a `Date`.
+ *
+ * `z.coerce.date()` on its own also accepts a NUMBER, and a bare year in YAML is a
+ * number. `start: 2023` therefore arrives as the integer `2023`, `new Date(2023)` is 23
+ * milliseconds after the Unix epoch, and the page renders "1970 - 1970" for a role that
+ * ran from 2023 to 2025. The failure is silent and total — nothing is missing, the years
+ * are simply wrong — so the number is rejected here and the author gets a message
+ * instead. Quote the year (`start: "2023"`) or give it a month.
+ *
+ * Strings and `Date` are both accepted because both are what frontmatter can hold: the
+ * YAML parser leaves `2023-01` and `2026-08-13` as strings, and only a bare integer comes
+ * through as a number. `projects.date` still uses plain `z.coerce.date()` and carries the
+ * same trap; it is a separate collection with its own contract and is not changed here.
+ */
+const roleDate = z
+  .union([z.string(), z.date()])
+  .transform((value) => new Date(value))
+  .refine((date) => !Number.isNaN(date.valueOf()), { message: 'Not a parsable date' })
+
 const experience = defineCollection({
   loader: glob({ base: './src/content/experience', pattern: '**/*.md' }),
   schema: z
@@ -120,11 +140,11 @@ const experience = defineCollection({
        */
       remote: z.boolean().default(false),
 
-      /** Start of the role. Coerced, so `2025-10` and `2025-10-06` both work. */
-      start: z.coerce.date(),
+      /** Start of the role. `2025-10` and `2025-10-06` both work. See `roleDate` above. */
+      start: roleDate,
 
       /** End of the role. Omitted while the role is current. Checked below. */
-      end: z.coerce.date().optional(),
+      end: roleDate.optional(),
 
       /** Ongoing role. See the note above on why this is a flag and not an empty end. */
       current: z.boolean().default(false),

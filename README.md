@@ -142,7 +142,7 @@ company: Company Name
 role: Job Title # the row heading
 location: City, Country # or Remote
 remote: false
-start: 2025-10 # coerced, so 2025-10 and 2025-10-06 both work
+start: 2025-10 # so does 2025-10-06. A bare year must be quoted: "2023"
 end: 2026-01 # omit for an ongoing role
 current: false # true means ongoing; asserted, never inferred
 granularity: month # month | year, defaults to month
@@ -158,15 +158,21 @@ Three of those fields exist to stop the page claiming more than the source:
 - **`current` is a flag, not an empty `end`.** An ongoing role sets `current: true` and
   omits `end`. A closed role with no `end` fails `astro build`, so forgetting the field
   cannot quietly turn a role that ended years ago into one that is still open.
-- **`granularity` records the source's precision.** `z.coerce.date()` turns both `2025`
-  and `2025-01-01` into the first of January, so a role the CV dated by year would
-  otherwise render as "Jan 2025" — a month nobody ever claimed.
+- **`granularity` records the source's precision.** `start: 2025-10` and
+  `start: 2025-01-01` both become the first of January, so a role the CV dated by year
+  would otherwise render as "Jan 2025" — a month nobody ever claimed.
 - **`summary` is optional.** A CV states what was done, not what the job was, and there
   is no honest one-liner to write from bullet points alone. The cap matches
   `projects.summary` so the two collections agree on what "one line" means.
 
-Quote the `highlights` strings. Each one contains a colon, and an unquoted
-`Bug Triage: Isolated complex code defects` is a YAML mapping, not a string.
+Two quoting rules, both of which fail the build loudly rather than rendering wrong
+years, but which are much easier to write than to remember:
+
+- **Quote a bare year.** `start: 2023` is a YAML integer, and a date coerced from a
+  number is milliseconds since the epoch — the page rendered "1970 - 1970" before the
+  schema started rejecting numbers.
+- **Quote every highlight.** Each one contains a colon, and an unquoted
+  `Bug Triage: Isolated complex code defects` is a YAML mapping, not a string.
 
 ## Code blocks
 
