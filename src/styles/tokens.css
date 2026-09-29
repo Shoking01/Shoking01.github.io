@@ -91,7 +91,4 @@
 
   /* Focus ring: 9.27:1 on base, 5.15:1 even on surface1. */
   --c-focus: var(--ctp-peach);
-
-  /* Blinking caret. Paused under prefers-reduced-motion. */
-  --c-caret: var(--ctp-green);
 }
