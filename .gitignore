@@ -27,3 +27,7 @@ pnpm-debug.log*
 # `gentle-ai skill-registry refresh` and indexes absolute SKILL.md paths under the
 # user's home directory. It is machine-local state, not project content.
 .atl/
+
+# Local CodeGraph index (SQLite knowledge graph of the symbols in this repo).
+# Machine-local, regenerated from source, and never part of a commit.
+.codegraph/
