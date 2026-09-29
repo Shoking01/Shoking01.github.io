@@ -144,17 +144,21 @@ check(
   '::view-transition-group(*) targeted by name',
 )
 check(
-  'the blinking caret and the scanline drift are disabled under reduced motion',
-  /\.caret[\s\S]{0,80}?body::?before/.test(reducedBlock),
-  `.caret and body::before named in the block (keyframes found: ${keyframes.join(', ') || 'none'})`,
+  'the scanline drift is disabled under reduced motion',
+  /body::?before/.test(reducedBlock),
+  `body::before named in the block (keyframes found: ${keyframes.join(', ') || 'none'})`,
 )
+// The allowlist is the honest way to say "this keyframe is handled, and here is how":
+// the named animations are killed by SELECTOR, so the block never has to contain the
+// keyframe's own name. A name in this list is a claim that something above names the
+// rule it drives, so adding a keyframe without a selector to kill it fails here rather
+// than shipping. `caret-blink` left this list when the caret did.
 check(
   'every @keyframes declared in the project is reachable from that block',
   keyframes.length === 0 ||
-    keyframes.every((name) =>
-      ['caret-blink', 'scanline-drift'].includes(name) ||
-      reducedBlock.includes(`.${name}`) ||
-      reducedBlock.includes(name),
+    keyframes.every(
+      (name) =>
+        ['scanline-drift'].includes(name) || reducedBlock.includes(`.${name}`) || reducedBlock.includes(name),
     ),
   `keyframes: ${keyframes.join(', ')}`,
 )
