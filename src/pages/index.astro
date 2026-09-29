@@ -45,17 +45,6 @@ const projects = (await getCollection('projects')).sort(
 
 const hasProjects = projects.length > 0
 
-/**
- * Whether the source column has anything to say.
- *
- * A heading over an empty column is worse than no heading: it promises a destination
- * for every row and delivers one for some, and a reader who counts the `source` cells
- * is right to feel the table lied to them. So the column is emitted only when at least
- * one project actually has an outbound link, and per-row collapse is `ProjectRow`'s
- * job — a project with `links: []` simply has one cell fewer than its neighbours.
- */
-const hasSource = projects.some((project) => project.data.links.length > 0)
-
 /** The count line a shell would print after a listing. Never an empty box. */
 const count = `${projects.length} ${projects.length === 1 ? 'entry' : 'entries'}`
 
@@ -246,7 +235,6 @@ const now =
                 <th scope="col" data-col="status">status</th>
                 <th scope="col" data-col="date">started</th>
                 <th scope="col" data-col="stack">stack</th>
-                {hasSource && <th scope="col" data-col="source">source</th>}
               </tr>
             </thead>
             <tbody>
@@ -378,38 +366,63 @@ const now =
      against the shell's 76 cells — so the alignment is measured in characters even
      though the widths are content-driven.
 
-     COLUMN DROP ORDER. Columns are dropped, not wrapped. A wrapped stack column under
-     a 17-character project name turns a listing into a paragraph, and the point of the
-     table is that a value is always in the same place. The order below is a value
-     judgement and it is the reverse of the one a listing page usually wants:
+     COLUMN DROP ORDER. Columns are dropped, not wrapped. A wrapped stack cell under
+     a 16-character project name and a repository turns a listing into a paragraph, and
+     the point of the table is that a value is always in the same place.
 
-       1. stack    <= 710px   widest and least load-bearing. Four items is 22 cells,
-                               and the stack is on the case study in full.
-       2. date     <= 480px   ten digits. A reader scanning a portfolio is looking for
-                               what a project is and whether it is alive, not for the
-                               month it started.
-       3. source   <= 380px   LAST, and this is the one that is easy to get backwards.
-                               Source is the optional column that actually gets a
-                               recruiter to the code, which is the thing they came for,
-                               and it is the column a recruiter cannot survive without.
-                               Name and status are never dropped: they are the row.
+     There is now exactly one column that gives way:
 
-     Arithmetic, at the body size where `1ch` is exactly 9px and the shell is
-     `min(76ch, 100% - 2rem)`. A table will not shrink below its min-content width, so
-     these are the numbers that decide where a column has to go. The first three are the
-     owner's measured widths, carried over unchanged; SOURCE is added, measured the same
-     way — `source` is 6 cells at `--text-base` (54px) plus one `2ch` gutter (18px) =
-     72px — so the existing figures are extended rather than re-guessed:
+       date  <= 710px   ten digits. A reader scanning a portfolio is looking for what a
+                         project is, whether it is alive, and whether the code is worth
+                         reading — not for the month it started.
 
-       all five columns  name 153 + status 62 + date 90 + stack 207 + source 72
-                          + 4 gutters 72 = 656px, so the viewport must be >= 688px
-       stack dropped     name 153 + status 62 + date 90 + source 72
-                          + 3 gutters 54 = 431px, so the viewport must be >= 463px
-       date dropped      name 153 + status 62 + source 72
-                          + 2 gutters 36 = 323px, so the viewport must be >= 355px
+     STACK is no longer droppable, and that is the decision this table is built around.
+     The repository link used to be a SOURCE column that dropped at 380px, below most
+     phones, which meant the one path from a listing to the code was the first thing to
+     disappear. The repository now lives inside the STACK cell, and the cell that holds it
+     is the one column that is never dropped — so the destination is in the tab order and
+     on screen at every width, down to the narrowest phone this page has to work at.
+     Folding the repository into a droppable cell would have changed nothing: both would
+     have gone at the same breakpoint. NAME and STATUS are never dropped; they are the row.
 
-     The three breakpoints carry 22px, 17px and 25px of slack on top of those
-     minimums, in the same spirit as the 42px and 47px the two-column version used. */
+     ARITHMETIC. `1ch` is exactly 9px at `--text-base` — 0.9375rem is 15px and JetBrains
+     Mono's advance is 0.6em — so the shell's 76 cells are 684px. The shell is
+     `min(684px, 100% - 2rem)`, so a content width W needs a viewport of W + 32px. The
+     gutter is `2ch` = 18px per cell, minus the last child. A table will not shrink below
+     its min-content width, so these are the numbers that decide where a column has to go.
+
+     NAME and DATE are counted, not eyeballed, and they correct two figures this comment
+     used to carry: `sh-images-reborn` is 16 characters, so NAME is 144px rather than the
+     153px a 17-cell reading gave it, and `rust gpui axum proptest` is 23 characters, which
+     is where the old 207px came from and is now confirmed. `2026-08-13` is 10 cells, so
+     DATE is 90px. STATUS is the one carried measurement: `+ ACTIVE` is 62px. In a
+     monospace face a cell count is not an estimate, so a count that disagrees with the
+     old figure is a correction rather than a competing guess.
+
+     STACK is re-measured rather than carried, because its content changed. The widest
+     STACK cell is not the longest stack: it is the row that carries a repository. For
+     Sh_Images Reborn that is `rust gpui windows` + the anchor's 1ch margin +
+     `Sh_Images-Reborn` = 17 + 1 + 16 = 34 cells = 306px, and `ProjectRow` carries the
+     label arithmetic. Sh_Nexus's `rust gpui axum proptest` is 23 cells = 207px and it has
+     `links: []`, so it is not the widest cell and does not set the column.
+
+       all four columns  name 144 + status 62 + date 90 + stack 306 + 3 gutters 54
+                        = 656px, so the viewport must be >= 688px
+       date dropped     name 144 + status 62 + stack 306 + 2 gutters 36
+                        = 548px, so the viewport must be >= 580px
+
+     The breakpoint is 710px: 688px of measured minimum plus 22px of slack, the same band
+     and the same 22px the five-column table's first breakpoint used. Above 710px the shell
+     is already capped at its 684px and the four-column row has 28px to spare inside it. At
+     the breakpoint itself the widest row is the three-column 548px, 136px inside the same
+     684px. It also cannot be lowered much: at 689px the shell is 657px and the four-column
+     row wants 656, so one pixel is the entire margin. The breakpoint is pinned by the
+     repository, not by the date.
+
+     Re-derive both numbers if a project ships a longer repository name, and in particular
+     when the TODO in `sh-nexus.md` is answered: a row with a 23-cell stack AND a repository
+     is wider than any row this arithmetic has measured, and a breakpoint carried over from
+     here would overflow the shell instead of dropping a column. */
   .ls {
     width: 100%;
     font-size: var(--text-base);
@@ -459,24 +472,15 @@ const now =
     background-color: var(--surface-panel);
   }
 
-  /* See the note above for the order and the arithmetic. Each rule is `display: none`
-     rather than a smaller font or a collapsed width, because a hidden link must leave
-     the tab order too: a `source` anchor that is still focusable but not visible is
-     worse than no source column at all. */
+  /* See the note above for the order and the arithmetic. It is `display: none` rather
+     than a smaller font or a collapsed width for the reason a hidden link must leave
+     the tab order too: a cell that is dropped is gone, and an anchor that is still
+     focusable inside a `visibility: hidden` or `opacity: 0` cell is a focus stop on
+     something nobody can see. DATE is the only cell that drops, and it holds no link —
+     the repository lives in STACK, which never drops, so at every width the row has
+     exactly the links it shows. */
   @media (max-width: 710px) {
-    .ls :global([data-col='stack']) {
-      display: none;
-    }
-  }
-
-  @media (max-width: 480px) {
     .ls :global([data-col='date']) {
-      display: none;
-    }
-  }
-
-  @media (max-width: 380px) {
-    .ls :global([data-col='source']) {
       display: none;
     }
   }
