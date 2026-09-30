@@ -45,22 +45,36 @@ const projects = (await getCollection('projects')).sort(
 const hasProjects = projects.length > 0
 
 /**
- * The intro, in prose. Written, and marked as written.
+* The intro, in prose. Translated, not drafted.
  *
- * `site.tagline` above it is the one line this page was built around, and these three
- * sentences are the first thing a reader meets in full. Every claim in them is already
- * stated somewhere on this site or derivable from it: the span from the two projects
- * and the skills taxonomy, the debugging angle from the tagline and the about page, the
- * measurable constraints from the case studies themselves. Nothing here is a new fact,
- * which is the only reason prose is safe to write on a page whose argument is that its
- * numbers are real.
+ * PROVENANCE. Every claim here came from the owner answering two questions, not from
+ * inference, and the previous version of this text was a guess dressed as a claim:
  *
- * TODO(you): drafted from those same sources rather than written by you. Three sentences
- * of English on the front page, and they are yours to rewrite.
+ *   1. The three-beat performance line is his. He was asked what kind of problem he
+ *      wants to solve and answered that the goal is to fix bad performance, to push
+ *      speed and consumption to their limit, and that this is WHY he went further into
+ *      Rust and GPUI. The first two beats are corroborated by the CV, not by me:
+ *      "enhancing system processing speeds" under Technical Support Specialist, and
+ *      "improving system response times" under Full Stack Developer. So the thread runs
+ *      through both jobs and both personal projects on the record, and the causality is
+ *      his: he picked the problem, and the stack followed from it.
+ *
+ *   2. The Reborn paragraph is his, near-verbatim in substance. He was asked for the
+ *      hardest thing he had to resolve, and the answer was not a bug at all: the first
+ *      version was too ambitious to solve anything and ended badly, so he rebuilt it
+ *      from zero knowing his limits, and this time it did its job. The consequence is
+ *      that the project's name is the lesson, which no CV line could carry.
+ *
+ * WHAT IS STILL MINE: the English, and the order. He answered in Spanish and this is a
+ * translation, which preserves his claims and loses his cadence. If it does not sound
+ * like him, it is because it is not yet his English.
+ *
+ * No new facts are introduced here. That is what makes prose safe to write on a page
+ * whose argument is that its numbers are real.
  */
 const intro = [
-  'I build for the web and I write native Rust, and to me those are the same job: work out what a system is actually doing before you change anything. The years in technical support and root-cause analysis are where that habit came from. Most of what I have debugged, I had to reach from the outside first, which is a slow way to learn and a fast one to keep.',
-  'The projects below are the evidence rather than the pitch. What they share is that the constraints are measurable — a folder of four thousand images has a memory budget, a decode budget that is a real setting rather than a placeholder, and a coverage figure that was read off the report instead of copied out of a README.',
+  'Performance is the problem I keep coming back to. In technical support it was making systems stop being slow. As a full-stack developer it was response times. Now I work in Rust and GPUI because that is where speed and resource consumption are actually decided.',
+  'Sh_Images Reborn is named Reborn because the first version failed, and not because of a bug. It was too ambitious to solve anything, so I threw it away and rebuilt it from zero, this time knowing what I was able to finish. Both projects below come from that habit: the constraints are measurable, and the numbers come off the reports rather than out of a README.',
 ]
 
 /* ------------------------------------------------------------------ *
