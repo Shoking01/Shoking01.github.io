@@ -203,21 +203,33 @@ const now =
 <BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
   <div class="page">
     <header class="intro">
-      <h1 class="intro__name">{site.name}</h1>
-      <p class="intro__role">{site.role}</p>
-      <p class="intro__tagline">{site.tagline}</p>
+      <div class="intro__text">
+        <h1 class="intro__name">{site.name}</h1>
+        <p class="intro__role">{site.role}</p>
+        <p class="intro__tagline">{site.tagline}</p>
 
-      <div class="intro__body">
-        {intro.map((paragraph) => (
-          <p class="intro__para">{paragraph}</p>
-        ))}
+        <div class="intro__body">
+          {intro.map((paragraph) => (
+            <p class="intro__para">{paragraph}</p>
+          ))}
+        </div>
+
+        <p class="now">
+          <span class="now__label">currently</span>
+          <span class="now__sep" aria-hidden="true">│</span>
+          <span class="now__text">{now}</span>
+        </p>
       </div>
 
-      <p class="now">
-        <span class="now__label">currently</span>
-        <span class="now__sep" aria-hidden="true">│</span>
-        <span class="now__text">{now}</span>
-      </p>
+      <img
+        class="intro__portrait"
+        src="/portrait.jpg"
+        alt={site.name}
+        width="360"
+        height="450"
+        loading="eager"
+        fetchpriority="high"
+      />
     </header>
 
     <section class="section" id="facts">
@@ -317,10 +329,113 @@ const now =
   /* ---- The intro -------------------------------------------------------------
      Unframed, because this is the reading part of the page and the frame belongs to the
      chrome. The name is the only 52px on the site: it is the one line that has to
-     carry the page, and a second line at that size would stop it being the first. */
+     carry the page, and a second line at that size would stop it being the first.
+
+     TWO COLUMNS ABOVE 51rem, ONE BELOW. The portrait is the second DOM child on
+     purpose, so the name is what a screen reader and a crawler read first, and so a
+     visitor who leaves on load never waited for the file. The stacked order is the
+     same order: the text is what the page is for, and the photograph is context for it.
+
+     `.intro__text` is a plain block and not a grid. Its track would be a single
+     `auto`, and an `auto` track is content-sized — which is exactly the trap the rest
+     of this file is written against. A block has a definite width from its grid area,
+     so `min-width: 0` is the whole of what it needs.
+
+     THE COLUMNS FIT AT 88 CELLS AND NOT ONE CELL MORE, which is why the photograph is
+     capped below its own 360px. All the arithmetic below is in shell cells at
+     `--text-base`, where 1ch is the font advance: 0.6em is 9.0px nominally and 8.781px
+     measured in a browser, the same two figures already used by the Facts comment
+     below and derived in typography.css.
+
+       portrait   360px / 8.781px                       = 41.0 cells
+                  360px IS 41 cells. That is the whole reason for that number and it is
+                  also the problem: 41 of 88 is very nearly half the shell for one
+                  element.
+       name       13 characters at --text-hero (52px)
+                  13 x 52 x 0.5854 = 395.7px              = 45.1 cells
+       gutter     2ch                                     =  2.0 cells
+
+       at 360px:  41.0 + 45.1 + 2.0 = 88.1 cells  -> OVER by 0.1 cell, under a pixel.
+       At 360px the 52px name WRAPS, and it was measured wrapping: the text column
+       resolves to 395.5px there against a name that needs 396.1px. A hair over on the
+       last pixel of the widest line on the page is not a margin, it is the layout
+       failing at the one size that cannot fail, so the cap is real rather than
+       decorative.
+
+       capped:    38.0 + 45.1 + 2.0 = 85.1 cells  -> 2.9 cells of slack, 25.8px.
+                  The prose column also recovers 21px, taking the intro paragraphs
+                  from 33.8 characters to 36 at `--text-prose`. 60-80 is the band
+                  typography.css documents and this page cannot reach it in two
+                  columns — the shell is 88 cells and the photograph wants half of
+                  them — so the honest move is to make the two that do fit as
+                  comfortable as possible and say so, not to pretend otherwise.
+
+       sharpness  38ch is 334px rendered from a 720px file, which is 2.16x. The 360px
+                  figure was picked for 2x; the cap gives up 7% of the width and buys
+                  back 25.8px of slack, so nothing about it costs sharpness.
+
+     BREAKPOINT IS WHERE THE SHELL REACHES 88 CELLS. The shell is `min(88ch, 100% -
+     2rem)`, so it is at full width once the viewport reaches 88ch + 2rem = 804.7px.
+     51rem (816px) is the first whole rem above that; at 48rem the shell is 736px, which
+     is 83.7 cells and cannot hold the two columns. Below the breakpoint the layout is
+     one column and the photograph lands after the text. */
   .intro {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    row-gap: 2ch;
+    align-items: start;
+  }
+
+  @media (min-width: 51rem) {
+    .intro {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 38ch);
+      column-gap: 2ch;
+    }
+  }
+
+  .intro__text {
+    min-width: 0;
+  }
+
+  /* The photograph, framed in the same language as everything else and by a completely
+     different mechanism.
+
+     NOT IN A `Panel`, and the reason is structural rather than stylistic. A panel's
+     frame is real box-drawing TEXT sitting on a character grid: the top and bottom
+     rails are runs of `─` and the sides are columns of `│`, both measured in `ch` and
+     both depending on the font's 600/1000 advance and on `line-height: 1.5`. An image
+     has no character grid. It has no advance, no line box, and no cell to sit in, so a
+     photo inside a character frame either opens a gap in the rails or sits visibly off
+     the ones it does not break — and nothing about the result names its own cause. So
+     the three cues a panel gets are restated in the only language an `<img>` has:
+
+       surface  `--surface-panel` (surface0), the rung every card and panel sits on.
+                The intro itself is unframed on `base`, so surface0 is the next step
+                up and the photograph lands on the page the way every other raised
+                element does.
+       border   `--c-frame`, 1px. This is the exact token the panel rails are drawn
+                in, it resolves to overlay0, and overlay0 is documented as
+                decorative-only — which is what a frame is. It is never a text colour
+                here, and verify-structure.mjs checks that.
+       radius   2px. `╭ ╮ ╰ ╯` each carry a 0.1 em arm on the 600 advance, and at the
+                panel's 15px that arm is 1.5px, so 2px is the closest whole-pixel
+                radius that echoes it. It is also the radius `:not(pre) > code` already
+                uses, so this is the site's rounding and not a new one. 4px and up
+                stops reading as a corner echo and starts reading as a rounded card,
+                which is a different shape of thing.
+
+     `width` and `height` on the element are the 360x450 box the browser reserves, and
+     the aspect ratio it derives from them is what keeps the page from shifting. The
+     CSS width below is the cap, not the size: `max-width: 38ch` is the arithmetic above,
+     and `height: auto` lets the ratio do its work. No `object-fit` is needed and none
+     is wanted — the file is already cropped 4:5 and the box is 4:5, so any fit rule
+     here would be a crop the owner did not ask for. */
+  .intro__portrait {
+    width: 100%;
+    max-width: 38ch;
+    background-color: var(--surface-panel);
+    border: 1px solid var(--c-frame);
+    border-radius: 2px;
   }
 
   .intro__name {
