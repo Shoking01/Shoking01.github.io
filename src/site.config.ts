@@ -37,10 +37,23 @@ export interface SiteConfig {
 export const site: SiteConfig = {
   name: 'Adrián Quirós',
   role: 'Full-Stack Developer',
-  // TODO(you): this line was drafted from the CV, not written by you. It is the
-  // one string on the site a reader decides on, so replace it with your own words.
+  /* THE TAGLINE DOES DOUBLE DUTY, and that is why it is a sentence and not a fragment.
+   * It is the line under the role, AND it is this page's `meta description` and OG
+   * description. In those last two it is read alone, with no page around it and no
+   * context, so a ticket-title fragment that lands well in the hero reads as a fragment
+   * in a search result.
+
+   * REPLACED because the previous one had started to contradict the intro. That line was
+   * a debugging thesis; the approved intro is a performance thesis, and a reader
+   * arriving at the top of the page was being pitched two different developers.
+
+   * The content is the owner's. Asked what kind of problem he wants to solve, he
+   * answered that the goal is to fix bad performance, to push speed and consumption to
+   * their limit, and that this is why he went further into Rust and GPUI. The claim that
+   * the stack follows from the problem is his own, and it is the one worth carrying here
+   * because it is what the two projects then demonstrate. */
   tagline:
-    'I build web applications, and then I find out why they break. Support work taught me to debug systems most developers only ever see from the outside.',
+    'I optimise application performance in Rust and GPUI — speed and resource consumption, pushed as far as they go.',
   // TODO(you): the production origin, with no trailing slash. Nothing deploys correctly without it.
   url: 'https://example.com',
   locale: 'en',
