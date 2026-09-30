@@ -54,8 +54,17 @@ export const site: SiteConfig = {
    * because it is what the two projects then demonstrate. */
   tagline:
     'I optimise application performance in Rust and GPUI — speed and resource consumption, pushed as far as they go.',
-  // TODO(you): the production origin, with no trailing slash. Nothing deploys correctly without it.
-  url: 'https://example.com',
+  /* A GitHub Pages repository named `<user>.github.io` is served from the subdomain
+     ROOT, so the origin is `https://shoking01.github.io` and `base` stays `/`. That is
+     the one deployment shape where the site paths need no rewriting: a project site at
+     `/repo/` would instead require Astro's `base` to become `/Portfolio/` and every
+     internal link to be rebased under it.
+
+     This value is not cosmetic. The same string is read by `astro.config.mjs` for the
+     sitemap and by `Seo.astro` for the canonical link, the Open Graph URL and the
+     Twitter card, and `public/robots.txt` hardcodes it as well, so a wrong value makes
+     all four wrong together. Change it in one place and it moves everywhere. */
+  url: 'https://shoking01.github.io',
   locale: 'en',
   links: [
     { label: 'github', href: 'https://github.com/Shoking01' },
