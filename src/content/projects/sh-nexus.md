@@ -15,9 +15,13 @@ stack:
   - gpui
   - axum
   - proptest
-# TODO(you): add the repository URL. Left empty rather than guessed, because an empty
-# links array is skipped and a wrong URL is rendered.
-links: []
+# Checked against the GitHub API before linking: the repository is PUBLIC, so the
+# link resolves for a reader rather than 404ing for everyone but the owner. It was
+# created 2026-09-27, six days after the work started, which is why the date above is
+# not the repository's.
+links:
+  - label: source
+    href: https://github.com/Shoking01/Sh_Nexus
 ---
 
 ## The project
