@@ -46,10 +46,20 @@ export const site: SiteConfig = {
   locale: 'en',
   links: [
     { label: 'github', href: 'https://github.com/Shoking01' },
-    // UNVERIFIED. The CV renders this slug with accents; LinkedIn normalises
-    // slugs to ASCII in practice, so confirm it from the browser address bar.
-    // A live probe from this machine returned a connection-level block (no HTTP
-    // response at all, for every variant tried), so it could not be checked here.
+    /* Supplied twice by the owner as his public profile URL, and kept on his authority:
+       he can see the page, this environment cannot.
+
+       Verification attempted and abandoned, with the result recorded so it is not
+       re-attempted. LinkedIn answers every non-browser request from this machine with
+       a connection-level failure and no HTTP response at all — code 999, not a 404 —
+       via curl with and without a browser User-Agent, and via a separate fetch path.
+       The search index surfaces five other Costa Rica profiles under a similar name and
+       none of them is this CV, so no URL was inferred from it: guessing here would put
+       a stranger's profile in a job-hunting portfolio.
+
+       The accent is NOT evidence of error. Accented LinkedIn slugs do exist — a live
+       example is another Adrian in this same search — so the earlier assumption that
+       LinkedIn normalises slugs to ASCII was wrong, and the slug stands. */
     { label: 'linkedin', href: 'https://www.linkedin.com/in/adrián-quirós' },
     { label: 'email', href: 'mailto:quirosadrian941@gmail.com' },
   ],
