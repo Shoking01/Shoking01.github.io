@@ -30,6 +30,13 @@ import { site } from '../site.config'
  * reader announces the sections; what it does not have is a large word at the top whose
  * only content is the word "About", which is what the home page's 52px name is for and
  * what repeating here would dilute. The hidden heading keeps the document named.
+ *
+ * NO SKILL COUNT either. It printed `26 items in 4 groups` under a list that shows all
+ * 26, one by one, so it was counting what the reader could already count — and in the
+ * home rail the same line had the opposite problem, admitting a list that did not say
+ * whether it was whole or an excerpt. Both are gone; see the note in `index.astro`.
+ * `.count` therefore styles only the role total now, and `.count__note` only the
+ * empty-collection message.
  */
 
 const roles = (await getCollection('experience')).sort(
@@ -49,7 +56,6 @@ const hasRoles = roles.length > 0
 /** What a listing prints after it. Never an empty section. */
 const roleCount = `${roles.length} ${roles.length === 1 ? 'role' : 'roles'}`
 
-const skillCount = skillGroups.reduce((total, group) => total + group.items.length, 0)
 
 const MONTHS = [
   'Jan',
@@ -207,8 +213,6 @@ const languages = 'Spanish native, English professional working proficiency (B2+
               ))
             }
           </div>
-
-          <p class="count">{skillCount} items in {skillGroups.length} groups</p>
         </section>
       </aside>
     </div>

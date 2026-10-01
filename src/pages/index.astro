@@ -100,9 +100,16 @@ const intro = [
  * 763px, which clears a 768px laptop by five pixels and fails in anything shorter. So
  * this rail scrolls with the page. The case study keeps its sticky rail because a table
  * of contents is short and staying reachable is the entire reason to want one.
+ *
+ * THERE IS NO COUNT HERE, and there used to be a `26 items in 4 groups` line. A count
+ * earns its place by telling the reader something the list does not already say, and
+ * a rail that prints twelve lines of names without enumerating them does not: the
+ * reader has no way to know whether they are looking at the whole taxonomy or an
+ * excerpt, and the honest answer was to remove the count rather than to keep a number
+ * that admits the gap. The full list is on the About page, where all 26 are visible
+ * one by one. The `skillCount` reduction went with the line; Astro does not warn about
+ * an unused binding, so it would have sat there forever.
  * ------------------------------------------------------------------ */
-
-const skillCount = skillGroups.reduce((total, group) => total + group.items.length, 0)
 
 /**
  * What the owner is doing right now, in one sentence.
@@ -197,8 +204,6 @@ const now =
               ))
             }
           </div>
-
-          <p class="count">{skillCount} items in {skillGroups.length} groups</p>
         </section>
       </aside>
     </div>
@@ -538,14 +543,6 @@ const now =
     content: '#';
     color: var(--c-line);
     margin-inline-end: 0.35ch;
-  }
-
-  /* The count, and it is the same count the About page prints. Derived from the same
-     array in the same loop, so the two cannot disagree. */
-  .count {
-    margin-block-start: 1.4em;
-    font-size: var(--text-sm);
-    color: var(--c-text-muted);
   }
 
   /* ---- Projects --------------------------------------------------------------
