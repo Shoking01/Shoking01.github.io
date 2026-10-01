@@ -71,63 +71,69 @@ const sections = headings.filter((h) => h.depth === 2 && h.slug)
     </div>
 
     <p class="case__summary">{summary}</p>
-
-    <dl class="case__meta">
-      <div class="case__meta-pair">
-        <dt class="label">year</dt>
-        <dd><time datetime={iso}>{year}</time></dd>
-      </div>
-      <div class="case__meta-pair">
-        <dt class="label">role</dt>
-        <dd>{role}</dd>
-      </div>
-    </dl>
-
-    {
-      stack.length > 0 && (
-        <ul class="case__stack" aria-label="Stack">
-          {stack.map((item) => (
-            <li class="case__tech">{item}</li>
-          ))}
-        </ul>
-      )
-    }
-
-    {
-      links.length > 0 && (
-        <ul class="case__links">
-          {links.map((link) => (
-            <li>
-              <a class="case__link" href={link.href} rel="noopener">
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )
-    }
-
-    {
-      sections.length > 1 && (
-        <nav class="case__toc" aria-label="Contents">
-          <p class="label">contents</p>
-          <ol class="case__toc-list">
-            {sections.map((section) => (
-              <li>
-                <a class="case__toc-link" href={`#${section.slug}`}>
-                  {section.text}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )
-    }
   </Panel>
 
-  <article class="prose">
-    <Content />
-  </article>
+  <div class="case__body">
+    <article class="prose">
+      <Content />
+    </article>
+
+    <aside class="case__rail">
+      <Panel class="case__meta-panel">
+        <dl class="case__meta">
+          <div class="case__meta-pair">
+            <dt class="label">year</dt>
+            <dd><time datetime={iso}>{year}</time></dd>
+          </div>
+          <div class="case__meta-pair">
+            <dt class="label">role</dt>
+            <dd>{role}</dd>
+          </div>
+        </dl>
+
+        {
+          stack.length > 0 && (
+            <ul class="case__stack" aria-label="Stack">
+              {stack.map((item) => (
+                <li class="case__tech">{item}</li>
+              ))}
+            </ul>
+          )
+        }
+
+        {
+          links.length > 0 && (
+            <ul class="case__links">
+              {links.map((link) => (
+                <li>
+                  <a class="case__link" href={link.href} rel="noopener">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </Panel>
+
+      {
+        sections.length > 1 && (
+          <nav class="case__toc" aria-label="Contents">
+            <p class="label">contents</p>
+            <ol class="case__toc-list">
+              {sections.map((section) => (
+                <li>
+                  <a class="case__toc-link" href={`#${section.slug}`}>
+                    {section.text}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )
+      }
+    </aside>
+  </div>
 
   <Panel class="case__footer">
     <a class="case__back" href="/#projects">&gt; all projects</a>
@@ -135,6 +141,37 @@ const sections = headings.filter((h) => h.depth === 2 && h.slug)
 </BaseLayout>
 
 <style>
+  /* ---- The two-column split ---------------------------------------------------
+     This is the page that needed it most: the longest body on the site measured 4404px
+     tall in a 773px column, inside a shell that is now 1142px wide. Widening the shell
+     without using the width would have put 369px of nothing beside every one of those
+     paragraphs.
+
+     So the article takes the 88-cell reading column and the chrome beside it takes the
+     rail. That is the same split this site already argues for — chrome framed and dense,
+     prose unframed at 66ch — applied along the horizontal axis instead of the vertical
+     one, and the header panel above keeps the title, the breadcrumb and the summary at
+     full shell width because those three are the page's identity rather than either of
+     the two modes.
+
+     The rail is sticky, and on an article this long that is the difference between a
+     table of contents and a table of contents you had to scroll back up to find.
+     `--sticky-top` is the measured nav height plus one cell of air, so the rail parks
+     clear of the chrome rather than under it. */
+  @media (min-width: 74rem) {
+    .case__body {
+      display: grid;
+      grid-template-columns: minmax(0, calc(var(--content-cols) * 1ch)) minmax(0, 1fr);
+      column-gap: calc(var(--gutter-cols) * 1ch);
+      align-items: start;
+    }
+
+    .case__rail {
+      position: sticky;
+      top: var(--sticky-top);
+    }
+  }
+
   .case__crumb {
     font-size: var(--text-sm);
     color: var(--c-text-muted);

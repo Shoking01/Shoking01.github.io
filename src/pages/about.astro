@@ -99,113 +99,119 @@ const languages = 'Spanish native, English professional working proficiency (B2+
   <div class="page">
     <h1 class="visually-hidden">About</h1>
 
-    <section class="section" id="experience">
-      <AsciiRule as="div" cols={88} />
-      <h2 class="section__title">Experience</h2>
+    <div class="body">
+      <div class="body__main">
+        <section class="section" id="experience">
+          <AsciiRule as="div" />
+          <h2 class="section__title">Experience</h2>
 
-      {
-        hasRoles ? (
-          <ol class="roles" role="list">
-            {roles.map((entry) => {
-              const { company, role, location, remote, start, end, current, granularity, summary, highlights, stack } =
-                entry.data
-              // Unreachable while the schema holds, and the same wording the schema forbids,
-              // rather than `undefined` rendered into a page.
-              const open = current || !end
-              return (
-                <li class="role">
-                  <h3 class="role__title">{role}</h3>
+          {
+            hasRoles ? (
+              <ol class="roles" role="list">
+                {roles.map((entry) => {
+                  const { company, role, location, remote, start, end, current, granularity, summary, highlights, stack } =
+                    entry.data
+                  // Unreachable while the schema holds, and the same wording the schema forbids,
+                  // rather than `undefined` rendered into a page.
+                  const open = current || !end
+                  return (
+                    <li class="role">
+                      <h3 class="role__title">{role}</h3>
 
-                  <p class="role__company">
-                    {company}
-                    {remote && <span class="role__remote">remote</span>}
-                  </p>
+                      <p class="role__company">
+                        {company}
+                        {remote && <span class="role__remote">remote</span>}
+                      </p>
 
-                  <dl class="role__meta">
-                    <dt class="label">period</dt>
-                    <dd>
-                      <time datetime={iso(start)}>{stamp(start, granularity)}</time>
-                      <span class="role__sep">-</span>
-                      {open ? (
-                        <span>present</span>
-                      ) : (
-                        <time datetime={iso(end!)}>{stamp(end!, granularity)}</time>
+                      <dl class="role__meta">
+                        <dt class="label">period</dt>
+                        <dd>
+                          <time datetime={iso(start)}>{stamp(start, granularity)}</time>
+                          <span class="role__sep">-</span>
+                          {open ? (
+                            <span>present</span>
+                          ) : (
+                            <time datetime={iso(end!)}>{stamp(end!, granularity)}</time>
+                          )}
+                        </dd>
+
+                        <dt class="label">location</dt>
+                        <dd>{location}</dd>
+                      </dl>
+
+                      {summary && <p class="role__summary">{summary}</p>}
+
+                      <ul class="role__highlights" role="list">
+                        {highlights.map((highlight) => (
+                          <li class="role__highlight">
+                            <span class="role__bullet" aria-hidden="true">*</span>
+                            <span class="role__highlight-text">{highlight}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {stack.length > 0 && (
+                        <ul class="role__stack" role="list">
+                          {stack.map((item) => (
+                            <li class="role__tech">{item}</li>
+                          ))}
+                        </ul>
                       )}
-                    </dd>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : (
+              <p class="count">(no entries)</p>
+            )
+          }
 
-                    <dt class="label">location</dt>
-                    <dd>{location}</dd>
-                  </dl>
+          {
+            hasRoles && (
+              <p class="count">{roleCount}</p>
+            )
+          }
 
-                  {summary && <p class="role__summary">{summary}</p>}
-
-                  <ul class="role__highlights" role="list">
-                    {highlights.map((highlight) => (
-                      <li class="role__highlight">
-                        <span class="role__bullet" aria-hidden="true">*</span>
-                        <span class="role__highlight-text">{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {stack.length > 0 && (
-                    <ul class="role__stack" role="list">
-                      {stack.map((item) => (
-                        <li class="role__tech">{item}</li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        ) : (
-          <p class="count">(no entries)</p>
-        )
-      }
-
-      {
-        hasRoles && (
-          <p class="count">{roleCount}</p>
-        )
-      }
-
-      {
-        !hasRoles && (
-          <p class="count__note">
-            No roles yet. Create one markdown file in <code>src/content/experience/</code>.
-          </p>
-        )
-      }
-    </section>
-
-    <section class="section" id="skills">
-      <AsciiRule as="div" cols={88} />
-      <h2 class="section__title">Skills</h2>
-
-      <p class="languages">
-        <span class="languages__label">spoken</span>
-        <span class="languages__sep" aria-hidden="true">│</span>
-        <span class="languages__text">{languages}</span>
-      </p>
-
-      <div class="groups">
-        {
-          skillGroups.map((group) => (
-            <section class="group">
-              <h3 class="label">{group.label}</h3>
-              <ul class="group__items" role="list">
-                {group.items.map((item) => (
-                  <li class="group__item">{item}</li>
-                ))}
-              </ul>
-            </section>
-          ))
-        }
+          {
+            !hasRoles && (
+              <p class="count__note">
+                No roles yet. Create one markdown file in <code>src/content/experience/</code>.
+              </p>
+            )
+          }
+        </section>
       </div>
 
-      <p class="count">{skillCount} items in {skillGroups.length} groups</p>
-    </section>
+      <aside class="body__rail">
+        <section class="section" id="skills">
+          <AsciiRule as="div" />
+          <h2 class="section__title">Skills</h2>
+
+          <p class="languages">
+            <span class="languages__label">spoken</span>
+            <span class="languages__sep" aria-hidden="true">│</span>
+            <span class="languages__text">{languages}</span>
+          </p>
+
+          <div class="groups">
+            {
+              skillGroups.map((group) => (
+                <section class="group">
+                  <h3 class="label">{group.label}</h3>
+                  <ul class="group__items" role="list">
+                    {group.items.map((item) => (
+                      <li class="group__item">{item}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))
+            }
+          </div>
+
+          <p class="count">{skillCount} items in {skillGroups.length} groups</p>
+        </section>
+      </aside>
+    </div>
   </div>
 </BaseLayout>
 
@@ -251,6 +257,39 @@ const languages = 'Spanish native, English professional working proficiency (B2+
     letter-spacing: var(--tracking-label);
     line-height: 1.25;
     margin-block-end: 1.4em;
+  }
+
+  /* ---- The two-column split ---------------------------------------------------
+     THE SAME GRID AS THE HOME PAGE, and it is here for the same reason: the shell is
+     130 cells and the reading measure is 88 of them, so a page that used all 130 for
+     one column of prose would leave 369px of dead space beside every paragraph. The
+     full derivation, the rejected 94-cell alternative and the breakpoint arithmetic are
+     in `index.astro` under "The page grid"; the three numbers are `--content-cols`
+     (88), `--rail-cols` (40) and `--gutter-cols` (2), and they live in `BaseLayout`
+     because the measure they have to agree with lives in `typography.css`.
+
+     WHAT GOES WHERE IS NOT ARBITRARY. Experience is the argument — two roles, six
+     bullets, read top to bottom in sentences — so it keeps the 66ch reading column and
+     the full width it had before. Skills is a lookup table: 26 items in four groups,
+     and nobody reads it as a document. It is the thing that was losing to a full-width
+     band, and in a rail it becomes what it always was, a reference.
+
+     The content track is a LENGTH (`--content-cols` in `ch`), not `1fr`, and the rail
+     takes the remainder. The shell is capped at 130 cells, so that remainder is exactly
+     40 cells and the rail can never grow — which is the point: the reading column is
+     pinned to the measure by construction, not by a subtraction staying correct. */
+  @media (min-width: 74rem) {
+    .body {
+      display: grid;
+      grid-template-columns: minmax(0, calc(var(--content-cols) * 1ch)) minmax(0, 1fr);
+      column-gap: calc(var(--gutter-cols) * 1ch);
+      align-items: start;
+    }
+
+    .body__rail {
+      position: sticky;
+      top: var(--sticky-top);
+    }
   }
 
   /* ---- Experience ------------------------------------------------------------
