@@ -21,7 +21,16 @@
 interface Props {
   /** Text set into the rule. Omit for a bare rule. */
   label?: string
-  /** Rule width in character cells. */
+  /**
+   * Rule width in character cells. OMIT IT to fill the container.
+   *
+   * The default used to be 64, and a default is the wrong tool here: a rule marks the
+   * full width of the column it divides, and the column's width is already decided by
+   * the grid above it. Hardcoding a second number meant the rule and its column could
+   * disagree, and the only symptom was a rule that stopped short of the frame it was
+   * drawn to divide — 64 cells is 562px, which is visibly short of an 88-cell column.
+   * This is `Panel`'s contract exactly: a number caps it, no number means fluid.
+   */
   cols?: number
   align?: 'start' | 'center'
   /** Element to render. Use `div` when a real heading would be a duplicate. */
@@ -29,15 +38,15 @@ interface Props {
   class?: string
 }
 
-const { label, cols = 64, align = 'start', as: Tag = 'h2', class: className } = Astro.props
+const { label, cols, align = 'start', as: Tag = 'h2', class: className } = Astro.props
 
 // Long enough to fill any plausible container; the flex track clips the rest.
 const rule = '\u2500'.repeat(256)
 ---
 
 <div
-  class:list={['rule', `rule--${align}`, !label && 'rule--bare', className]}
-  style={`--cols:${cols};`}
+  class:list={['rule', `rule--${align}`, !label && 'rule--bare', cols && 'rule--capped', className]}
+  style={cols ? `--cols:${cols};` : undefined}
 >
   {label ? (
     <>
@@ -55,11 +64,16 @@ const rule = '\u2500'.repeat(256)
     display: flex;
     align-items: baseline;
     width: 100%;
-    max-width: min(calc(var(--cols) * 1ch), 100%);
     color: var(--c-frame);
     font-size: var(--text-base);
     font-variant-ligatures: none;
     letter-spacing: normal;
+  }
+
+  /* Only a rule that was given a number is capped by it. Uncapped, it fills whatever
+     column it is in, which is what a section break is supposed to do. */
+  .rule--capped {
+    max-width: min(calc(var(--cols) * 1ch), 100%);
   }
 
   .rule__label {

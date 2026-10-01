@@ -216,15 +216,15 @@ const now =
 
 <BaseLayout title={`${site.name} — ${site.role}`} description={site.tagline}>
   <div class="page">
-    <header class="intro">
-      <div class="intro__text">
-        <h1 class="intro__name">{site.name}</h1>
-        <p class="intro__role">{site.role}</p>
-        <p class="intro__tagline">{site.tagline}</p>
-      </div>
+    <div class="hero">
+      <header class="hero__text">
+        <h1 class="hero__name">{site.name}</h1>
+        <p class="hero__role">{site.role}</p>
+        <p class="hero__tagline">{site.tagline}</p>
+      </header>
 
       <img
-        class="intro__portrait"
+        class="hero__portrait"
         src="/portrait.jpg"
         alt={site.name}
         width="360"
@@ -232,64 +232,70 @@ const now =
         loading="eager"
         fetchpriority="high"
       />
-    </header>
 
-    <div class="intro__body">
-      {intro.map((paragraph) => (
-        <p class="intro__para">{paragraph}</p>
-      ))}
+      <div class="intro__body">
+        {intro.map((paragraph) => (
+          <p class="intro__para">{paragraph}</p>
+        ))}
+      </div>
     </div>
 
-    <p class="now">
-      <span class="now__label">currently</span>
-      <span class="now__sep" aria-hidden="true">│</span>
-      <span class="now__text">{now}</span>
-    </p>
+    <div class="body">
+      <div class="body__main">
+        <p class="now">
+          <span class="now__label">currently</span>
+          <span class="now__sep" aria-hidden="true">│</span>
+          <span class="now__text">{now}</span>
+        </p>
 
-    <section class="section" id="facts">
-      <AsciiRule as="div" cols={88} />
-      <h2 class="section__title">Facts</h2>
+        <section class="section" id="projects">
+          <AsciiRule as="div" />
+          <h2 class="section__title">Projects</h2>
 
-      <Panel surface="panel" class="facts" padBlock="1em" padInline="1.5ch">
-        <dl class="facts__list">
           {
-            facts.map((row) => (
-              <Fragment>
-                <dt class="label">{row.label}</dt>
-                <dd class="facts__value">{row.value}</dd>
-              </Fragment>
-            ))
+            hasProjects ? (
+              <ul class="cards" role="list">
+                {projects.map((project) => (
+                  <li>
+                    <ProjectCard project={project} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p class="cards__note">
+                No projects yet. Create one markdown file in <code>src/content/projects/</code>.
+              </p>
+            )
           }
-        </dl>
-      </Panel>
-    </section>
+        </section>
+      </div>
 
-    <section class="section" id="projects">
-      <AsciiRule as="div" cols={88} />
-      <h2 class="section__title">Projects</h2>
+      <aside class="body__rail">
+        <section class="section" id="facts">
+          <AsciiRule as="div" />
+          <h2 class="section__title">Facts</h2>
 
-      {
-        hasProjects ? (
-          <ul class="cards" role="list">
-            {projects.map((project) => (
-              <li>
-                <ProjectCard project={project} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="cards__note">
-            No projects yet. Create one markdown file in <code>src/content/projects/</code>.
-          </p>
-        )
-      }
-    </section>
+          <Panel surface="panel" class="facts" padBlock="1em" padInline="1.5ch">
+            <dl class="facts__list">
+              {
+                facts.map((row) => (
+                  <Fragment>
+                    <dt class="label">{row.label}</dt>
+                    <dd class="facts__value">{row.value}</dd>
+                  </Fragment>
+                ))
+              }
+            </dl>
+          </Panel>
+        </section>
+      </aside>
+    </div>
   </div>
 </BaseLayout>
 
 <style>
   /* ---- The page ---------------------------------------------------------------
-     A stack of three blocks with a real gap between them, sized in the chrome's own
+     A stack of two blocks with a real gap between them, sized in the chrome's own
      leading so the vertical rhythm belongs to the character grid rather than to a
      guessed pixel value. Each block is a grid, because a block's heading and its
      content are two rows of one thing rather than two elements that happen to be
@@ -340,87 +346,125 @@ const now =
     margin-block-end: 1.2em;
   }
 
-  /* ---- The intro -------------------------------------------------------------
+  /* ---- The page grid ----------------------------------------------------------
+     THE WHOLE POINT OF THE CHANGE, and the arithmetic that produced it.
+
+     The shell used to be 88 cells — exactly one reading column, because
+     `--measure-prose` is 66ch at 20px and 66 x 20 = 88 x 15. A page that is exactly as
+     wide as its prose has nowhere to put a second thing, so every block after the first
+     became a full-width band the reader had to scroll past to reach the next one. The
+     owner asked for a page that is wider across the screen and less linear downward,
+     and the naive answer — widen the shell, leave the prose alone — is the one that
+     does not work:
+
+        shell 130 cells          = 1142.58px
+        content 94 cells         =  826.19px
+        prose capped at 66ch     =  773.44px
+        DEAD SPACE                            52.75px
+
+     The paragraph sits 52.75px short of the frame around it, left-aligned, on every
+     block on the page. That is not a wider page, it is a broken one.
+
+     So the content track stays at 88 cells and the new width is spent on a RAIL:
+
+        content  88 cells =  773.44px = 66ch at 20px exactly  <- unchanged, by design
+        gutter    2 cells =   17.58px
+        rail     40 cells =  351.56px
+        shell   130 cells = 1142.58px
+
+     1ch at `--text-base` measured in a headless browser is 8.7891px, not the nominal
+     9px, and every figure above uses the measured one.
+
+     THE BREAKPOINT IS THE SMALLEST VIEWPORT THAT STILL FITS THE GRID, and it is
+     derived rather than chosen. The shell is `min(130ch, 100% - 2rem)`, so it only
+     reaches 130 cells at a viewport of 1142.58 + 32 = 1174.58px. Below that the shell
+     is `100% - 2rem` and a 40-cell rail would eat 40% of it, leaving the prose at
+     roughly 45 characters — under the 60-80 band and worse than the 66 it has now.
+     74rem is 1184px, the first whole rem above 1174.58px, so at the exact breakpoint
+     the prose gets its full 66 characters and not one pixel less. */
+  @media (min-width: 74rem) {
+    .body {
+      display: grid;
+      grid-template-columns: minmax(0, calc(var(--content-cols) * 1ch)) minmax(0, 1fr);
+      column-gap: calc(var(--gutter-cols) * 1ch);
+      align-items: start;
+    }
+
+    /* The rail holds the facts, and they are worth keeping on screen while the projects
+       scroll past. `top` is `--sticky-top` from `BaseLayout`, which is the measured
+       height of the nav plus one cell of air, so the panel parks below the chrome
+       instead of under it. */
+    .body__rail {
+      position: sticky;
+      top: var(--sticky-top);
+    }
+  }
+
+  /* ---- The hero --------------------------------------------------------------
      Unframed, because this is the reading part of the page and the frame belongs to the
      chrome. The name is the only 52px on the site: it is the one line that has to
      carry the page, and a second line at that size would stop it being the first.
 
-     TWO COLUMNS ABOVE 51rem, ONE BELOW. The portrait is the second DOM child on
-     purpose, so the name is what a screen reader and a crawler read first, and so a
-     visitor who leaves on load never waited for the file. The stacked order is the
-     same order: the text is what the page is for, and the photograph is context for it.
+     The hero spans BOTH columns and splits them itself, which is what lets the
+     photograph and the name stop competing. Before, they shared 88 cells and the
+     arithmetic was brutal:
 
-     `.intro__text` is a plain block and not a grid. Its track would be a single
-     `auto`, and an `auto` track is content-sized — which is exactly the trap the rest
-     of this file is written against. A block has a definite width from its grid area,
-     so `min-width: 0` is the whole of what it needs.
+        portrait 360px / 8.7891px              = 41.0 cells
+        name     13 chars at 52px             = 45.1 cells
+        gutter                                 =  2.0 cells
+                                            -----------
+                                                88.1 cells  -> over by 0.1 cell
 
-     THE COLUMNS FIT AT 88 CELLS AND NOT ONE CELL MORE, which is why the photograph is
-     capped below its own 360px. All the arithmetic below is in shell cells at
-     `--text-base`, where 1ch is the font advance: 0.6em is 9.0px nominally and 8.781px
-     measured in a browser, the same two figures already used by the Facts comment
-     below and derived in typography.css.
+     A tenth of a cell under a pixel, and the 52px name therefore WRAPPED, and the
+     photograph had to be capped to 38ch to buy back 25.8px of slack. Now the portrait
+     has the 40-cell rail to itself and the name has all 88, so the cap is gone, the
+     wrap is gone, and neither element is diminished to accommodate the other.
 
-       portrait   360px / 8.781px                       = 41.0 cells
-                   360px IS 41 cells. That is the whole reason for that number and it is
-                   also the problem: 41 of 88 is very nearly half the shell for one
-                   element.
-       name       13 characters at --text-hero (52px)
-                   13 x 52 x 0.5854 = 395.7px              = 45.1 cells
-       gutter     2ch                                     =  2.0 cells
+     The portrait is the second DOM child on purpose, so the name is what a screen
+     reader and a crawler read first, and so a visitor who leaves on load never waited
+     for the file. That order is the stacked order too: the text is what the page is
+     for, and the photograph is context for it. The two-column split is `grid-area`,
+     never `order`, so no width reorders the document for anyone reading it linearly.
 
-       at 360px:  41.0 + 45.1 + 2.0 = 88.1 cells  -> OVER by 0.1 cell, under a pixel.
-       At 360px the 52px name WRAPS, and it was measured wrapping: the text column
-       resolves to 395.5px there against a name that needs 396.1px. A hair over on the
-       last pixel of the widest line on the page is not a margin, it is the layout
-       failing at the one size that cannot fail, so the cap is real rather than
-       decorative.
-
-       capped:    38.0 + 45.1 + 2.0 = 85.1 cells  -> 2.9 cells of slack, 25.8px.
-       sharpness  38ch is 334px rendered from a 720px file, which is 2.16x. The 360px
-                   figure was picked for 2x; the cap gives up 7% of the width and buys
-                   back 25.8px of slack, so nothing about it costs sharpness.
-
-     WHY THE PROSE IS NOT IN THE SECOND COLUMN. It was, and it measured 36 characters
-     per line — about five words. That is the number the two-column layout can reach
-     inside an 88-cell shell when the photograph wants half of it, and 36 is well below
-     the 60-80 band typography.css documents. The 60-80 band is a CHARACTER count, not a
-     pixel count, and it is not reachable by shrinking pixels: it is reachable only by
-     giving the line more characters, which means taking them back from the image.
-
-     So the split is by what the content is. The hero block is three short lines of
-     identity, and three short lines are comfortable at 45 cells. The intro is three
-     paragraphs of running prose, and running prose at 36 characters is not a margin
-     question — it is a readability defect, and it was the exact content the owner asked
-     to be able to read. The paragraphs now sit BELOW the hero at the full
-     `--measure-prose`, which is 66 characters at 20px: 773px, the same width as the
-     chrome column, by the arithmetic in typography.css.
-
-     The photograph stays in the second column, because a portrait is content of a
-     different shape: it needs presence, not measure, and it has none of the problems a
-     45-character name has. */
-
-
-     BREAKPOINT IS WHERE THE SHELL REACHES 88 CELLS. The shell is `min(88ch, 100% -
-     2rem)`, so it is at full width once the viewport reaches 88ch + 2rem = 804.7px.
-     51rem (816px) is the first whole rem above that; at 48rem the shell is 736px, which
-     is 83.7 cells and cannot hold the two columns. Below the breakpoint the layout is
-     one column and the photograph lands after the text. */
-  .intro {
+     THE PORTRAIT SPANS BOTH ROWS, and that is what removes the hole. Placed in row 1
+     alone, row 1 is as tall as the photograph — 351.56px wide at 4:5 is 439.45px tall —
+     and the three hero lines are 165px, so the text column carried 274px of nothing.
+     Measured on a build, not estimated. Letting the portrait span rows 1 and 2 means
+     row 1 is only as tall as the text and the prose starts immediately under it, at
+     the same 66ch, beside the picture instead of below it. The DOM order is untouched:
+     the text still precedes the photograph, and the prose still follows both. */
+  .hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     row-gap: 2ch;
     align-items: start;
   }
 
-  @media (min-width: 51rem) {
-    .intro {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 38ch);
-      column-gap: 2ch;
+  @media (min-width: 74rem) {
+    .hero {
+      grid-template-columns: minmax(0, calc(var(--content-cols) * 1ch)) minmax(0, 1fr);
+      column-gap: calc(var(--gutter-cols) * 1ch);
+    }
+
+    .hero__portrait {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+
+    /* Explicit, so it lands in row 1 column 1 rather than being auto-placed past the
+       spanning portrait. */
+    .hero__text {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .intro__body {
+      grid-column: 1;
+      grid-row: 2;
     }
   }
 
-  .intro__text {
+  .hero__text {
     min-width: 0;
   }
 
@@ -437,7 +481,7 @@ const now =
      the three cues a panel gets are restated in the only language an `<img>` has:
 
        surface  `--surface-panel` (surface0), the rung every card and panel sits on.
-                The intro itself is unframed on `base`, so surface0 is the next step
+                The hero itself is unframed on `base`, so surface0 is the next step
                 up and the photograph lands on the page the way every other raised
                 element does.
        border   `--c-frame`, 1px. This is the exact token the panel rails are drawn
@@ -452,20 +496,20 @@ const now =
                 which is a different shape of thing.
 
      `width` and `height` on the element are the 360x450 box the browser reserves, and
-     the aspect ratio it derives from them is what keeps the page from shifting. The
-     CSS width below is the cap, not the size: `max-width: 38ch` is the arithmetic above,
-     and `height: auto` lets the ratio do its work. No `object-fit` is needed and none
-     is wanted — the file is already cropped 4:5 and the box is 4:5, so any fit rule
-     here would be a crop the owner did not ask for. */
-  .intro__portrait {
+     the aspect ratio it derives from them is what keeps the page from shifting. There
+     is no `max-width` here any more and that is the point of the whole change: the
+     track is 40 cells, the image fills it, and nothing has to negotiate. 351.56px out
+     of a 720px file is 2.05x, so it is still sharper than the display can resolve. No
+     `object-fit` is needed and none is wanted — the file is already cropped 4:5 and
+     the box is 4:5, so any fit rule here would be a crop the owner did not ask for. */
+  .hero__portrait {
     width: 100%;
-    max-width: 38ch;
     background-color: var(--surface-panel);
     border: 1px solid var(--c-frame);
     border-radius: 2px;
   }
 
-  .intro__name {
+  .hero__name {
     font-size: var(--text-hero);
     font-weight: 700;
     line-height: 1.1;
@@ -474,7 +518,7 @@ const now =
   /* 24px and the accent, which is the same step a card title takes. The role is a
      label, not a headline, and letting it grow with the display scale would put two
      competing headlines at the top of the page. */
-  .intro__role {
+  .hero__role {
     font-size: var(--text-lg);
     color: var(--c-accent);
     line-height: 1.3;
@@ -483,7 +527,7 @@ const now =
   /* The tagline, still the one line it has always been, as the subline under the role.
      Same size as the prose below it and told apart by colour and by a narrower measure
      — a size step here would make the tagline a third headline. */
-  .intro__tagline {
+  .hero__tagline {
     margin-block-start: 0.7em;
     font-size: var(--text-prose);
     line-height: var(--leading-prose);
@@ -491,11 +535,14 @@ const now =
     max-width: var(--measure-lede);
   }
 
+  /* The running prose, in the content column and at the content column's own width.
+     `--measure-prose` and `--content-cols` resolve to the same 773.44px here — that is
+     the whole reason the rail was sized at 40 cells and not 42 — so the cap never bites
+     and the text ends exactly on the frame's right edge rather than 52px short of it. */
   .intro__body {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     row-gap: 1.25em;
-    margin-block-start: 1.6em;
   }
 
   .intro__para {
@@ -520,7 +567,7 @@ const now =
     display: grid;
     grid-template-columns: max-content max-content minmax(0, 1fr);
     align-items: baseline;
-    margin-block-start: 1.4em;
+    margin-block-start: 1.6em;
     font-size: var(--text-sm);
     color: var(--c-text-muted);
     max-width: var(--measure-prose);

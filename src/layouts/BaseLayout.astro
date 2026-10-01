@@ -77,20 +77,57 @@ const palette = paletteCss()
      column and the footer all start and end on the same column of the grid. This is the
      same `ch` unit `Panel` measures its frame in.
 
-     76 -> 88, and the whole reason is the prose. `ch` scales with the font size, so
-     the 66-character reading column went from 673px at 17px to 792px at 20px, and a
-     684px shell no longer held it. 88 cells at 15px is 792px, which is exactly
-     66 cells at 20px — 88 x 15 = 66 x 20 — so the reading column and the chrome are
-     the same physical width and neither one has slack the other does not. The full
-     derivation, and the measure-drop alternative that was rejected, are in
-     `typography.css` under `--measure-prose`.
+     88 -> 130, AND THE REASON IS NOT "IT LOOKED NICER WIDER". The shell was 88 cells
+     because the reading column is 88 cells, and a page that is exactly as wide as its
+     prose has nowhere to put anything else — every second block on the page became a
+     full-width band that had to be scrolled past to reach the next one. 130 cells is
+     88 of content plus a 40-cell rail and a 2-cell gutter, so the second column costs
+     the reading measure NOTHING. See the layout notes in `index.astro` for the
+     arithmetic and for the 53px of dead space that ruled out the obvious 94-cell
+     content track.
 
-     `wide` is gone with this. A case study used to ask for a second, wider shell
-     (88 cells) so the reading column had room; that number is now the default, so
-     the prop had nothing left to switch and the case study renders identically
-     before and after. */
+     The two numbers below are the load-bearing ones and they are not interchangeable:
+     `--content-cols` MUST stay equal to the 66ch reading measure, because a content
+     track wider than the prose is a paragraph sitting short of the frame around it.
+     `--rail-cols` is the slack, and it is the only part that is free to change. If a
+     future edit moves `--content-cols` without moving `--measure-prose` in
+     `typography.css` to match, the text and its container stop agreeing and the whole
+     grid is off by the difference.
+
+     `wide` is gone. A case study used to ask for a second, wider shell so the reading
+     column had room; every page is that wide now, so the prop had nothing left to
+     switch. */
   .shell {
-    --shell-cols: 88;
+    --shell-cols: 130;
+    /* The reading column. 88 cells at 15px is 773.44px measured in a browser, which is
+       66ch at 20px to the same measurement — the two figures the whole grid rests on.
+
+       Used as a LENGTH, not left to arithmetic. The pages declare the content track as
+       `minmax(0, calc(var(--content-cols) * 1ch))` rather than `1fr`, so "the reading
+       column is exactly the reading measure" is a structural fact and not a subtraction
+       that happens to work out while the three numbers stay in step. Change it and the
+       prose stops filling its column. */
+    --content-cols: 88;
+    /* The rail. Slack, and a sidebar width rather than a round number picked for looks:
+       40 cells is 351.56px. The widest value in the Facts block, `Built`, is 35
+       characters, so it wraps to two lines there — which is what a sidebar does with a
+       long value, and the reason the block is framed is so the wrap reads as a table
+       rather than as a broken line. */
+    --rail-cols: 40;
+    --gutter-cols: 2;
+
+    /* Where a sticky element parks, so the nav and the page rails cannot disagree.
+
+       DERIVED, NOT CHOSEN. The nav is a `Panel` with `--panel-pad-block: 0.7em` around
+       one line of 15px text at `--leading-chrome`, and it measures 88.5px tall in a
+       browser. A rail sharing the nav's own `top` would slide underneath it, so the
+       rail's offset is that height plus a little air: 11.5ch is 101.07px, which clears
+       the stuck nav by 12.57px — measured, not asserted, on a built page scrolled to
+       the point where both elements are parked. Re-measure the two numbers together if
+       the nav's type size or the panel's padding ever move; they are one value because
+       they are one fact. */
+    --sticky-top: 11.5ch;
+
     display: flex;
     flex-direction: column;
     gap: 2ch;
