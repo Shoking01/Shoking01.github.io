@@ -1,17 +1,14 @@
 ---
-import { createRequire } from 'node:module'
-
 import { getCollection } from 'astro:content'
 
 import BaseLayout from '../layouts/BaseLayout.astro'
 import AsciiRule from '../components/AsciiRule.astro'
-import Panel from '../components/Panel.astro'
 import ProjectCard from '../components/ProjectCard.astro'
 import { skillGroups } from '../data/skills'
 import { site } from '../site.config'
 
 /**
- * Home. Who this is, what it is made of, and what has been built.
+ * Home. Who this is, what this is made of, and what has been built.
  *
  * THE VISUAL LANGUAGE IS NOT THE SIMULATION. The rounded frames, the monospace grid,
  * the `ch` discipline, the elevation ramp and the `#` marker are the identity and all of
@@ -21,10 +18,11 @@ import { site } from '../site.config'
  * say without it. What is left is a site that looks the way it was built and reads like
  * a portfolio rather than a transcript.
  *
- * THE ORDER IS STILL THE ARGUMENT: who I am, what this is made of, what I have built.
- * The facts block sits in the middle because it is the transition — the point where the
- * page stops being a claim about a person and starts being evidence. Every value in it
- * is measured at build time, which is the only reason it is allowed to exist at all.
+ * THE ORDER IS STILL THE ARGUMENT: who I am, what I have built, and what I work with.
+ * The rail used to sit in the middle carrying build-time facts about the website; it
+ * carries the skills taxonomy now, because three of those four lines were about the site
+ * and one restated the Projects section underneath it. See the note on the skills rail
+ * below for what that cost and why it was worth it.
  *
  * There is no project data in this file. `getCollection` reads every markdown file in
  * `src/content/projects/`, so adding a project adds a card here without touching this
@@ -78,123 +76,33 @@ const intro = [
 ]
 
 /* ------------------------------------------------------------------ *
- * The facts block. Every value below is measured, not typed.
+ * The skills rail.
  *
- * The rule for this block is that it must not be able to drift. A version number
- * written into a template is a lie the day somebody runs `pnpm upgrade` and forgets
- * this file, and a version number written by hand into a metadata line is the single
- * most forgettable string on a portfolio site. So every figure is read at build time
- * from the thing it describes, and a value that cannot be read is OMITTED — the line
- * it belonged on disappears rather than printing a plausible guess. A block that lies
- * about its own toolchain is worse than one that says less.
+ * It reads `skillGroups` and nothing else, which is the point: the taxonomy is
+ * written once in `src/data/skills.ts` and both this rail and the About page render it,
+ * so a skill cannot be listed in one place and missing from the other.
+ *
+ * THIS REPLACED A FACTS BLOCK, and the three lines it held were the reason it went.
+ * `Built` and `Toolchain` were facts about the WEBSITE — which Astro version compiled
+ * these bytes, on which Node, under which package manager — sitting on a page whose
+ * subject is a person. `Projects` (`2 · active 2 · other 0`) restated the section
+ * directly beneath it. Of the four, only `Focus` was a claim about the owner, and a
+ * skills taxonomy says that and more.
+ *
+ * The honest cost, stated rather than buried: the site no longer prints its own
+ * toolchain anywhere. That was a real flex and it was the only place the versions were
+ * visible. They are still in `package.json` and in this repository's history, which is
+ * where a reader who cares about them will actually look.
+ *
+ * FOUR GROUPS, AND THE RAIL IS NOT STICKY. Measured on the built site at a 351.56px
+ * rail, the four groups come to 662.28px, and a sticky element needs `top` plus its own
+ * height in the viewport or its bottom is unreachable while it is parked. 101 + 662 =
+ * 763px, which clears a 768px laptop by five pixels and fails in anything shorter. So
+ * this rail scrolls with the page. The case study keeps its sticky rail because a table
+ * of contents is short and staying reachable is the entire reason to want one.
  * ------------------------------------------------------------------ */
 
-/**
- * Astro's own version, from the RESOLVED package rather than from this repository's
- * `package.json` range. `astro: "^7.3.5"` is a range, and `7.9.0` satisfies it, so
- * printing the range would print a caret. `require` resolves through the exports map
- * and lands on the one version that was actually compiled, which is the number the
- * reader cares about. `astro/package.json` is an explicit subpath in Astro's exports,
- * so this is a supported entry point and not a reach into private internals.
- */
-function resolvedVersion(specifier: string): string | undefined {
-  try {
-    return createRequire(import.meta.url)(specifier).version as string | undefined
-  } catch {
-    return undefined
-  }
-}
-
-const astroVersion = resolvedVersion('astro/package.json')
-
-/** Node and the platform, from the process doing the build. Cannot be wrong. */
-const nodeVersion = process.versions.node
-const platform = `${process.platform} ${process.arch}`
-
-/**
- * The package manager that ran this build, from its own `user-agent` string.
- *
- * `pnpm` writes `pnpm/12.5.1 npm/? node/? win32 x64` into the environment for its own
- * child processes, so the manager is derived rather than assumed — which matters,
- * because a repository's lockfile name is a convention and the user agent is a fact
- * about the machine that produced the bytes. It is `undefined` when the build was not
- * run through a package manager, and then the segment is dropped, not faked.
- */
-const packageManager = /^(?<name>[a-z]+)\/(?<version>\d[\w.+-]*)/.exec(
-  process.env.npm_config_user_agent ?? '',
-)?.groups
-
-const toolchainLine = [
-  astroVersion && `astro ${astroVersion}`,
-  packageManager && `${packageManager.name} ${packageManager.version}`,
-]
-  .filter(Boolean)
-  .join(' · ')
-
-/**
- * `2 · active 2 · other 0`, computed from the same `getCollection` result the cards
- * below render, so the two cannot disagree.
- *
- * `other` is `total - active` and covers `maintenance` and `archived`, the other two
- * states in the schema. It is printed even at zero: a count of zero is information
- * (nothing is archived), and a segment that appears and disappears as projects land
- * makes the line harder to read across two visits than a fixed shape.
- *
- * NOT `shipped 1 · in progress 1`, which is what a summary block wants to say. `status`
- * is a lifecycle flag and it cannot tell a released project from an unreleased one:
- * Sh_Images Reborn is finished and shipped and is still `status: active`, because
- * `active` means maintained, not launched. A shipped/in-progress split would have to be
- * typed by hand per project, and a hand-typed count on a page whose whole argument is
- * that the numbers are real is the one thing this block must not do.
- */
-const activeCount = projects.filter((project) => project.data.status === 'active').length
-
-const projectsLine = `${projects.length} · active ${activeCount} · other ${projects.length - activeCount}`
-
-/**
- * The technologies the site actually claims, derived from two existing sources rather
- * than typed: the curated `Native & systems` skill group, intersected with every
- * technology any shipped project actually uses.
- *
- * The intersection is the point. Either source alone is a claim that can go stale —
- * the skills taxonomy lists `Linux`, `Networking` and `Virtualization` for roles the
- * projects do not evidence, and the project stacks list `proptest`, which is a test
- * harness rather than a focus. What survives is what the owner has grouped as native
- * and systems work AND has actually built, so adding a Rust project cannot leave the
- * line claiming Rust is absent, and adding a Linux project cannot silently add a focus
- * that has not been written up.
- *
- * Both sides are already display-form (`skills.ts` holds `GPUI`, not `gpui`), so the
- * line reads the way the about page reads. If the group is ever renamed, the line goes
- * away instead of printing half of something.
- */
-const stackUsed = new Set(projects.flatMap((project) => project.data.stack.map((s) => s.toLowerCase())))
-
-const focusLine = (skillGroups.find((group) => group.label === 'Native & systems')?.items ?? [])
-  .filter((item) => stackUsed.has(item.toLowerCase()))
-  .join(' · ')
-
-/**
- * The block as label/value pairs, each line dropped if its value could not be derived.
- * The separator is U+00B7 MIDDLE DOT, inside the declared unicode ranges, which the
- * arrow and the check mark this design used to reach for are not.
- *
- * `Built` is PROVENANCE, not a version number for the site: it is the toolchain that
- * compiled this page. `Toolchain` is the reproduction recipe — the same Astro version
- * named, next to the package manager. They look like a duplicate and are not: one says
- * what built the bytes, the other says what to install to build them again. If that
- * distinction is not worth the two lines, the Astro version on either one of them is
- * the thing to cut.
- */
-const facts: { label: string; value: string }[] = [
-  {
-    label: 'Built',
-    value: [astroVersion, nodeVersion && `Node ${nodeVersion}`, platform].filter(Boolean).join(' · '),
-  },
-  { label: 'Toolchain', value: toolchainLine },
-  { label: 'Projects', value: projectsLine },
-  { label: 'Focus', value: focusLine },
-].filter((row) => row.value.length > 0)
+const skillCount = skillGroups.reduce((total, group) => total + group.items.length, 0)
 
 /**
  * What the owner is doing right now, in one sentence.
@@ -271,22 +179,26 @@ const now =
       </div>
 
       <aside class="body__rail">
-        <section class="section" id="facts">
+        <section class="section" id="skills">
           <AsciiRule as="div" />
-          <h2 class="section__title">Facts</h2>
+          <h2 class="section__title">Skills</h2>
 
-          <Panel surface="panel" class="facts" padBlock="1em" padInline="1.5ch">
-            <dl class="facts__list">
-              {
-                facts.map((row) => (
-                  <Fragment>
-                    <dt class="label">{row.label}</dt>
-                    <dd class="facts__value">{row.value}</dd>
-                  </Fragment>
-                ))
-              }
-            </dl>
-          </Panel>
+          <div class="groups">
+            {
+              skillGroups.map((group) => (
+                <section class="group">
+                  <h3 class="label">{group.label}</h3>
+                  <ul class="group__items" role="list">
+                    {group.items.map((item) => (
+                      <li class="group__item">{item}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))
+            }
+          </div>
+
+          <p class="count">{skillCount} items in {skillGroups.length} groups</p>
         </section>
       </aside>
     </div>
@@ -390,14 +302,13 @@ const now =
       align-items: start;
     }
 
-    /* The rail holds the facts, and they are worth keeping on screen while the projects
-       scroll past. `top` is `--sticky-top` from `BaseLayout`, which is the measured
-       height of the nav plus one cell of air, so the panel parks below the chrome
-       instead of under it. */
-    .body__rail {
-      position: sticky;
-      top: var(--sticky-top);
-    }
+    /* THE RAIL IS NOT STICKY, and it is the height that decides it. The four skill
+       groups measure 662.28px at this rail's 351.56px, and a sticky element needs its
+       `top` plus its own height to fit the viewport or its bottom is unreachable while
+       it is parked: 101 + 662 = 763px, which clears a 768px laptop by five pixels and
+       fails in anything shorter. A sidebar that cannot be scrolled to the end is worse
+       than one that scrolls away. The case study's rail keeps its sticky, because a
+       table of contents is short and staying put is the whole point of one. */
   }
 
   /* ---- The hero --------------------------------------------------------------
@@ -583,35 +494,58 @@ const now =
     margin-inline: 0.5ch;
   }
 
-  /* ---- Facts -----------------------------------------------------------------
-     Framed, because it is a block of values rather than reading, and because the frame
-     is what makes four short lines look like a panel instead of a stray list. The
-     padding comes from `Panel`'s `padBlock` / `padInline` props on the element above:
-     a `.facts` rule here would be scoped to this page while the panel element carries
-     `Panel`'s scope id, so it could never match. `verify-structure.mjs` check 8 exists
-     because that mistake was made twice on this site. */
+  /* ---- Skills -----------------------------------------------------------------
+     The same markup and the same styles as the About page's skills section, because it
+     is the same data rendered in the same place. Unframed, like that one: a panel
+     wrapped around 26 items in a 351.56px rail would be a list in a box, and the frame
+     is for values, not for a taxonomy.
 
-  /* `dt` and `dd` as direct grid items rather than wrapped in a pair element, so one
-     template aligns every label and every value down the block. A wrapper per pair
-     would give each pair its own `max-content` track and the values would step in and
-     out with their labels — the same reasoning the experience page uses for its own
-     metadata. `max-content` for the label track is what makes the second column line up
-     under `Built` without the label widths being hardcoded: the widest label sets the
-     track, and a longer label would widen it rather than collide. */
-  .facts__list {
+     `auto-fit` with a `ch` floor rather than a fixed column count. At 351.56px the
+     30ch floor (263.5px) admits one column, so this rail is a single wrapped list per
+     group; widen the rail past 60ch and it becomes two without anyone editing it. The
+     floor is the chrome's `ch` at 15px, which is the grid the `#` markers are counted
+     in, so an item never gets a column too narrow for its own longest word. */
+  .groups {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 0.25em 2ch;
-    /* The same size as the value, so the block reads as four lines of a table rather
-       than as a definition list with a caption. Labels are still quieter than values,
-       and both clear AA on `surface0`: `subtext0` measures 5.65:1 there and the frame
-       bounds the block to that surface. */
-    font-size: var(--text-sm);
+    grid-template-columns: repeat(auto-fit, minmax(30ch, 1fr));
+    gap: 1.6ch 3ch;
+    margin-block-start: 1.4em;
+    margin-block-end: 0;
+    min-width: 0;
   }
 
-  .facts__value {
-    margin: 0;
-    color: var(--c-text-soft);
+  /* The group headings carry the `.label` utility rather than a local copy of it: the
+     rail is unframed, so the surface is `base`, where `subtext0` measures 7.37:1 and the
+     utility is safe. It gives the same uppercase-and-tracked treatment the section
+     titles use, one step down. */
+  .group__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 1.5ch;
+    margin-block-start: 0.7em;
+    margin-block-end: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--c-text);
+  }
+
+  /* The same `#` prefix the project cards and the role stacks use for a tool, so a
+     wrapped row of skills cannot be misread as a run of prose. It is inline, next to
+     its own word, so it is not announced as a list marker and needs no `aria-hidden`
+     span of its own. */
+  .group__item::before {
+    content: '#';
+    color: var(--c-line);
+    margin-inline-end: 0.35ch;
+  }
+
+  /* The count, and it is the same count the About page prints. Derived from the same
+     array in the same loop, so the two cannot disagree. */
+  .count {
+    margin-block-start: 1.4em;
+    font-size: var(--text-sm);
+    color: var(--c-text-muted);
   }
 
   /* ---- Projects --------------------------------------------------------------
