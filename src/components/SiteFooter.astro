@@ -37,7 +37,12 @@ const links = site.links.filter((link) => link.href.length > 0)
 </Panel>
 
 <style>
-  .footer {
+  /* `:global`, because `Panel` renders this element and a scoped `.footer` could never
+     match it — so `margin-block-start: auto` was doing nothing and the footer was not
+     being pushed to the bottom of the shell. Unlike the padding cases this one is safe
+     to express as a selector: nothing else declares a `margin` on a panel, so there is
+     no specificity tie to lose. `verify-structure.mjs` check 8 is what flagged it. */
+  :global(.footer) {
     margin-block-start: auto;
   }
 

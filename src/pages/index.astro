@@ -250,7 +250,7 @@ const now =
       <AsciiRule as="div" cols={88} />
       <h2 class="section__title">Facts</h2>
 
-      <Panel surface="panel" class="facts">
+      <Panel surface="panel" class="facts" padBlock="1em" padInline="1.5ch">
         <dl class="facts__list">
           {
             facts.map((row) => (
@@ -538,11 +538,11 @@ const now =
 
   /* ---- Facts -----------------------------------------------------------------
      Framed, because it is a block of values rather than reading, and because the frame
-     is what makes four short lines look like a panel instead of a stray list. */
-  .facts :global(.panel__body) {
-    padding-block: 1em;
-    padding-inline: 1.5ch;
-  }
+     is what makes four short lines look like a panel instead of a stray list. The
+     padding comes from `Panel`'s `padBlock` / `padInline` props on the element above:
+     a `.facts` rule here would be scoped to this page while the panel element carries
+     `Panel`'s scope id, so it could never match. `verify-structure.mjs` check 8 exists
+     because that mistake was made twice on this site. */
 
   /* `dt` and `dd` as direct grid items rather than wrapped in a pair element, so one
      template aligns every label and every value down the block. A wrapper per pair

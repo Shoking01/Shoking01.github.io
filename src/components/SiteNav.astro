@@ -100,8 +100,26 @@ function isCurrent(route: Route): boolean {
 </Panel>
 
 <style>
-  .nav {
-    position: sticky;
+  /* `:global`, and NOT because the class name is unique.
+
+     This rule targets the root element of a CHILD component, and Astro's scoped styles
+     do not reach across that boundary. It stamps `data-astro-cid` only on the elements
+     THIS component renders, and `<Panel>` renders its own root. So a scoped `.nav`
+     compiles to `.nav[data-astro-cid-…]`, the nav element carries only `Panel`'s id,
+     and the selector matches nothing at all.
+
+     That is not a subtlety with a small consequence. `position: sticky` had never
+     applied: the nav scrolled away with the page. It looked perfect at rest, which is
+     exactly when nobody checks, and every OTHER rule in this file kept working because
+     `.nav__row`, `.nav__list` and `.nav__link` are elements this component does render.
+     One dead selector, and it was the only one doing something the design depends on.
+
+     `--panel-position` rather than `position: sticky` because `Panel` declares
+     `position: relative` and must: its vertical rails are absolutely positioned against
+     that box. A custom property crosses the scope boundary, since it needs no selector
+     match, so it is the only half of the job a consumer can actually do from here. */
+  :global(.nav) {
+    --panel-position: sticky;
     top: 0;
     z-index: 3;
   }

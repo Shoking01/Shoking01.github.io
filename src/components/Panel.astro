@@ -38,6 +38,15 @@ interface Props {
   rows?: number
   /** Surface the panel sits on. Depth comes from the elevation ramp, never a shadow. */
   surface?: 'sunken' | 'chrome' | 'page' | 'panel' | 'raised' | 'highest'
+  /**
+   * Body padding, block and inline. Set here rather than from the consumer because the
+   * body belongs to this component: a caller reaching it has to go through a scoped
+   * selector aimed at an element it does not render, which cannot match. Three callers
+   * wanted different padding and all three were silently ignored. See
+   * `verify-structure.mjs` check 8, which exists because of it.
+   */
+  padBlock?: string
+  padInline?: string
   class?: string
   id?: string
 }
@@ -46,9 +55,18 @@ const {
   cols,
   rows = 64,
   surface = 'panel',
+  padBlock,
+  padInline,
   class: className,
   id,
 } = Astro.props
+
+// Only emitted when asked for, so a panel that takes the defaults carries no inline
+// style at all and keeps looking like every other panel in the markup.
+const pad = [
+  padBlock && `--panel-pad-block:${padBlock}`,
+  padInline && `--panel-pad-inline:${padInline}`,
+].filter(Boolean).join(';')
 
 // With a known width the rails are exactly the right length. Without one they are a
 // long run that the flex-free clipping in CSS trims to whatever the container is.
@@ -61,7 +79,7 @@ const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
 
 <div
   class:list={['panel', `panel--${surface}`, !cols && 'panel--fluid', className]}
-  style={cols ? `--cols:${cols};` : undefined}
+  style={[cols && `--cols:${cols}`, pad].filter(Boolean).join(';') || undefined}
   id={id}
 >
   <span class="panel__corner panel__corner--tl" aria-hidden="true">╭</span>
@@ -84,8 +102,21 @@ const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
 <style>
   .panel {
     --panel-pad-block: 0.7em;
+    --panel-pad-inline: 1ch;
 
-    position: relative;
+    /* Exposed rather than hardcoded, and the reason is a bug that was actually live.
+
+       `position: relative` is not decoration here: the vertical rails below are
+       `position: absolute` and resolve against this box. So a panel cannot be left
+       unpositioned, and a consumer that needs to take positioning over — the nav needs
+       `sticky` — has no way to declare it, because Astro's scoped styles do not reach
+       a child component's root element. See the note on `:global(.nav)` in
+       `SiteNav.astro` for the whole of it.
+
+       A custom property resolves on the element itself and needs no scope match, so
+       this is the one extension point that works across that boundary. Default
+       unchanged, so every other consumer of `Panel` is untouched. */
+    position: var(--panel-position, relative);
     display: grid;
     grid-template-columns: 1ch minmax(0, 1fr) 1ch;
     grid-template-rows: auto auto auto;
@@ -189,8 +220,8 @@ const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
     padding-block: var(--panel-pad-block);
     /* One cell of breathing room inside the vertical rule on each side. Padding, not
        margin, so the grid track stays `cols - 2` cells wide and the rails still meet
-       the corners. */
-    padding-inline: 1ch;
+       the corners. Settable through the `padInline` prop. */
+    padding-inline: var(--panel-pad-inline);
     color: var(--c-text);
   }
 </style>

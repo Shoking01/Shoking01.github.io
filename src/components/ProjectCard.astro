@@ -81,7 +81,7 @@ const segment = base.slice(base.lastIndexOf('/') + 1)
 const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment : source.label) : ''
 ---
 
-<Panel surface="panel" class="card">
+<Panel surface="panel" class="card" padBlock="0.6em" padInline="1.5ch">
   <div class="card__head">
     <h3 class="card__title">
       <a class="card__case" href={href}>{title}</a>
@@ -126,15 +126,20 @@ const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment :
 </Panel>
 
 <style>
-  /* The panel contributes the frame and one cell of air inside each rail. This adds the
-     rest, on the body rather than by overriding `--panel-pad-block`, because a custom
-     property set here would be fighting the component's own scoped declaration for the
-     same name and winning or losing on stylesheet order. Padding is not worth a
-     specificity race. */
-  .card :global(.panel__body) {
-    padding-block: 0.6em;
-    padding-inline: 1.5ch;
-  }
+  /* There is deliberately no `.card` rule here, and there was one until `verify-structure`
+     check 8 caught it.
+
+     It read `.card :global(.panel__body) { padding-block: 0.6em; padding-inline: 1.5ch }`.
+     The `:global()` on the second half was the right instinct for the wrong reason: the
+     panel's own body rule is scoped, so a plain `.panel__body` would not have matched.
+     But the FIRST half was still scoped, and `Panel` renders that element, so the card
+     carries `Panel`'s scope id rather than this component's. The whole compound matched
+     nothing, and the card has been rendering at `Panel`'s default padding ever since,
+     under a comment that claimed otherwise.
+
+     Padding now goes through `Panel`'s `padBlock` / `padInline` props, which resolve as
+     custom properties on the element and so cross the scope boundary with nothing to
+     match and no specificity to lose. */
 
   .card__head {
     display: flex;

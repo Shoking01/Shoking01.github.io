@@ -329,6 +329,100 @@ check(
   `${largeCard.length}/${htmlFiles.length} pages`,
 )
 
+/* ------------------------------------------------------------------ *
+ * 8. No scoped rule targets a class this component does not render
+ *
+ * This one exists because of a bug that was live on the site and invisible.
+ *
+ * `SiteNav` renders its root through `<Panel>` and declared `position: sticky` on it in
+ * a scoped style block. Astro does not stamp a component's `data-astro-cid` onto a CHILD
+ * component's root element, so `.nav` compiled to `.nav[data-astro-cid-…]`, the nav
+ * element carried only `Panel`'s id, and the selector matched nothing. The nav scrolled
+ * away with the page. Every other rule in that file still worked, because `.nav__row`,
+ * `.nav__list` and `.nav__link` are elements the component does render — so the file
+ * looked entirely healthy while one rule silently did nothing.
+ *
+ * Neither the compiler nor a linter reports it: it is valid CSS matching an empty set.
+ *
+ * THE RULE, precisely: a class that a component passes to a CHILD component as a `class`
+ * or `class:list` prop is rendered by the child, so it carries the CHILD's scope id.
+ * Styling it from the parent with a plain scoped selector can therefore never match. The
+ * fix is always `:global(.that-class)` — which is what `SiteNav` now does.
+ *
+ * Checked at SOURCE, not against `dist/`, because the built output cannot tell a class
+ * that was never rendered from one that was rendered by a different component. It also
+ * does not flag a class that is built by string construction (`.panel--${surface}`), since
+ * a class that is legitimately unused on every page is not the bug this is looking for.
+ * ------------------------------------------------------------------ */
+
+const astroFiles = srcFiles.filter((f) => extname(f) === '.astro')
+const deadScoped = []
+
+for (const file of astroFiles) {
+  const text = readFileSync(file, 'utf8')
+  const styleAt = text.indexOf('<style')
+  if (styleAt === -1) continue
+  const template = text.slice(0, styleAt)
+  const style = text.slice(styleAt)
+
+  // Walk the template's tags and split the classes by WHO renders the element.
+  //
+  // A capitalised tag is NOT automatically a component. `Box` and `AsciiRule` both do
+  // `<Tag class:list={[…]}>` where `Tag` is a destructured `as` prop holding an HTML
+  // element name, and those elements are rendered by the file itself, carrying its own
+  // scope id. Treating a capital as a component flag made both look broken.
+  //
+  // So the test is whether the name is actually imported from a `.astro` file, or is
+  // dotted (`Foo.Bar`). Everything else is an element this component emits.
+  const frontmatter = text.startsWith('---') ? text.slice(0, text.indexOf('---', 3)) : ''
+  const imported = new Set()
+  for (const m of frontmatter.matchAll(/import\s+([A-Za-z][\w]*)\s+from\s+['"][^'"]*\.astro['"]/g)) {
+    imported.add(m[1])
+  }
+
+  const own = new Set()
+  const propped = new Set()
+
+  const classesIn = (tagText) => {
+    const found = []
+    for (const m of tagText.matchAll(/\sclass="([^"{}]*)"/g)) {
+      for (const c of m[1].split(/\s+/)) if (c) found.push(c)
+    }
+    for (const m of tagText.matchAll(/class:list=\{?\[([^\]]*)\]/g)) {
+      // Interpolated fragments (`` `--x${y}` ``) are skipped: they are built at runtime
+      // and their literal prefix is not a class that appears in the markup.
+      for (const q of m[1].matchAll(/['"`]([^'"`$]*)['"`]/g)) if (q[1]) found.push(q[1])
+    }
+    return found
+  }
+
+  for (const tag of template.matchAll(/<([A-Za-z][\w.-]*)((?:"[^"]*"|'[^']*'|\{[^}]*\}|[^>"'])*)\/?>/g)) {
+    const name = tag[1]
+    const isComponent = imported.has(name) || (name.includes('.') && !name.startsWith('.'))
+    for (const c of classesIn(tag[0])) (isComponent ? propped : own).add(c)
+  }
+
+  // Every plain scoped class selector in the style block. A selector inside
+  // `:global(…)` is exempt: that is the fix, not the bug.
+  const globalAt = [...style.matchAll(/:global\(([^)]*)\)/g)].map((m) => [m.index, m.index + m[0].length])
+  const insideGlobal = (i) => globalAt.some(([a, b]) => i >= a && i <= b)
+
+  for (const m of style.matchAll(/(^|[\s,>+~{])\.(-?[_a-zA-Z][\w-]*)/g)) {
+    const cls = m[2]
+    if (insideGlobal(m.index)) continue
+    if (!propped.has(cls) || own.has(cls)) continue
+    deadScoped.push(`${relative(root, file)}: .${cls}`)
+  }
+}
+
+check(
+  'no scoped rule styles a class that a child component renders',
+  deadScoped.length === 0,
+  deadScoped.length
+    ? `${deadScoped.length} dead selector(s): ${[...new Set(deadScoped)].slice(0, 8).join('; ')} — use :global()`
+    : `${astroFiles.length} Astro components scanned`,
+)
+
 /* ------------------------------------------------------------------ */
 console.log('structure verification\n')
 for (const line of notes) console.log(line)
