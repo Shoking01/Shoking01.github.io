@@ -1,11 +1,11 @@
 /**
  * Site identity.
  *
- * One field is still a placeholder and MUST be filled in before deploying:
- *
- *   - `url` — the canonical origin. It is what makes the canonical link, the
- *             Open Graph URL, `@astrojs/sitemap` and `robots.txt` agree with each
- *             other; if it is wrong, all four are wrong the same way.
+ * The comment that used to sit here said `url` was a placeholder still waiting to be
+ * filled in before deploying. It was filled in long ago and the site is live on it, so
+ * that sentence was actively harmful: it invited someone to "correct" a working value,
+ * and a wrong origin breaks the canonical link, the Open Graph URL, the sitemap and
+ * robots.txt in the same commit.
  *
  * Positioning: the site reads as a DEVELOPER portfolio. The support and RCA
  * experience is kept, because it is the differentiator, but it is framed as

@@ -262,6 +262,73 @@ check(
   uniqueUnsafe.length ? uniqueUnsafe.slice(0, 12).join('; ') : 'all text is covered by the declared unicode-ranges',
 )
 
+/* ------------------------------------------------------------------ *
+ * 7. The social card exists, is the right size, and is actually referenced
+ * ------------------------------------------------------------------ */
+// Three separate ways this breaks, none of them visible by looking at a page: the PNG
+// is deleted or gitignored, it is replaced by something that is not 1200x630, or
+// `Seo.astro` loses the tags. In all three cases the site still builds and still looks
+// correct, and the only symptom is a link preview with no image.
+const ogPath = join(dist, 'og.png')
+const ogExists = existsSync(ogPath)
+
+// Dimensions are read from the PNG IHDR rather than decoded. A PNG header is 8 bytes of
+// signature then a length/type chunk, and width and height sit at 16 and 20 as
+// big-endian uint32. This is enough to prove the aspect ratio without pulling in an
+// image dependency for one assertion.
+const ogSize = (() => {
+  if (!ogExists) return null
+  const buf = readFileSync(ogPath)
+  const isPng =
+    buf.length > 24 &&
+    buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  if (!isPng) return { png: false }
+  return { png: true, w: buf.readUInt32BE(16), h: buf.readUInt32BE(20), bytes: buf.length }
+})()
+
+check(
+  'public/og.png ships as a real 1200x630 PNG',
+  ogSize?.png === true && ogSize.w === 1200 && ogSize.h === 630,
+  ogSize?.png
+    ? `${ogSize.w}x${ogSize.h}, ${ogSize.bytes} bytes${ogSize.w !== 1200 || ogSize.h !== 630 ? ' (wrong dimensions)' : ''}`
+    : ogExists
+      ? 'the file exists but is not a PNG'
+      : 'dist/og.png not found',
+)
+
+// Every page carries the card, not just the home page, and the URL is absolute.
+// A relative `og:image` is not resolved by most crawlers, so it has to be checked too.
+const pagesWithCard = htmlFiles.filter((f) =>
+  /<meta\s+property="og:image"\s+content="https:\/\/shoking01\.github\.io\/og\.png"/i.test(
+    readFileSync(f, 'utf8'),
+  ),
+)
+check(
+  'every page declares an absolute og:image pointing at the shipped card',
+  htmlFiles.length > 0 && pagesWithCard.length === htmlFiles.length,
+  `${pagesWithCard.length}/${htmlFiles.length} pages`,
+)
+
+// A card with no declared dimensions makes the preview reflow when the image lands.
+const withDims = htmlFiles.filter((f) => {
+  const t = readFileSync(f, 'utf8')
+  return /og:image:width"\s+content="1200"/i.test(t) && /og:image:height"\s+content="630"/i.test(t)
+})
+check(
+  'every page declares og:image:width and og:image:height',
+  htmlFiles.length > 0 && withDims.length === htmlFiles.length,
+  `${withDims.length}/${htmlFiles.length} pages`,
+)
+
+const largeCard = htmlFiles.filter((f) =>
+  /<meta\s+name="twitter:card"\s+content="summary_large_image"/i.test(readFileSync(f, 'utf8')),
+)
+check(
+  'twitter:card is summary_large_image everywhere, matching the card that now exists',
+  htmlFiles.length > 0 && largeCard.length === htmlFiles.length,
+  `${largeCard.length}/${htmlFiles.length} pages`,
+)
+
 /* ------------------------------------------------------------------ */
 console.log('structure verification\n')
 for (const line of notes) console.log(line)

@@ -16,12 +16,25 @@ import { site } from '../site.config'
  *   3. The canonical URL is resolved against `site.url`, so it is absolute. A relative
  *      canonical is not a canonical.
  *
- * NO `og:image`. Deliberate, and it is a real gap rather than an oversight: every
- * crawler that matters renders JPEG, PNG or WebP and silently drops an SVG, and
- * producing a raster image here would mean adding an image pipeline to a static site
- * for one asset. `twitter:card` is therefore `summary` rather than
- * `summary_large_image`, which asks for a large card this page cannot supply. Adding a
- * real image means dropping a 1200x630 file at `public/og.png` and adding the tag here.
+ * `og:image` IS PRESENT, and the earlier reason for its absence is retired rather than
+ * quietly deleted. It was omitted because every crawler that matters renders JPEG, PNG
+ * or WebP and drops an SVG, and producing a raster would have meant an image pipeline in
+ * a static site for one asset. That objection was answered by rendering the asset ONCE,
+ * offline, with a throwaway script, and committing the result — so the pipeline exists
+ * but it is not a build dependency, the file is reviewable in a diff, and the site still
+ * ships no image tooling.
+ *
+ * The card is 1200x630 at 11KB: a near-white S in `text` on `crust`, under a `mauve`
+ * rule, set in JetBrains Mono. It is derived from the same palette as the tokens rather
+ * than from a second set of brand colours. Every crawler that dropped the SVG reads this
+ * file instead.
+ *
+ * `twitter:card` moves to `summary_large_image` for the same reason it was not before:
+ * there is now a large image to ask for.
+ *
+ * The dimensions are declared because a crawler that has to fetch the image still
+ * reserves the right aspect ratio up front, and an undeclared image makes the preview
+ * jump when it arrives.
  */
 
 interface Props {
@@ -36,6 +49,7 @@ interface Props {
 const { title, description, type = 'website', publishedTime } = Astro.props
 
 const canonical = new URL(Astro.url.pathname, site.url).href
+const ogImage = new URL('/og.png', site.url).href
 ---
 
 <title>{title}</title>
@@ -48,9 +62,15 @@ const canonical = new URL(Astro.url.pathname, site.url).href
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={`${site.name} — ${site.role}`} />
+{type === 'article' && <meta property="article:author" content={site.name} />}
 {publishedTime && <meta property="article:published_time" content={publishedTime} />}
 
-<!-- `summary`, not `summary_large_image`: there is no large image. See the note above. -->
-<meta name="twitter:card" content="summary" />
+<!-- `summary_large_image` because there is now a 1200x630 image to ask for. -->
+<meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />

@@ -255,19 +255,25 @@ The canonical URL is resolved against `site.url`, so it is absolute.
 and the canonical links cannot drift apart. A case study is `og:type=article` and adds
 `article:published_time`; the home page is `website`.
 
-### Known gap: no `og:image`
+### The social card
 
-There is deliberately no `og:image`. Every crawler that matters renders JPEG, PNG or
-WebP and silently drops an SVG, and producing a raster here would mean adding an image
-pipeline to a static site for one asset. `twitter:card` is therefore `summary` rather
-than `summary_large_image`, which would ask for a large card this page cannot supply.
+`public/og.png` is a 1200×630 PNG, 11KB: a near-white `S` in `text` on `crust`, under a
+`mauve` rule, set in JetBrains Mono. The colours are the same tokens the site renders
+with, so the card cannot drift from the design system the way a second set of brand
+colours would.
 
-To close it: drop a 1200×630 image at `public/og.png` and add
+`Seo.astro` emits `og:image`, `og:image:width`, `og:image:height` and `og:image:alt`,
+and `twitter:card` is `summary_large_image`. The dimensions are declared so a crawler
+reserves the right aspect ratio before it fetches the file.
 
-```astro
-<meta property="og:image" content={new URL('/og.png', site.url).href} />
-<meta name="twitter:card" content="summary_large_image" />
-```
+The gap this section used to describe is closed. It originally read that no `og:image`
+existed because every crawler that matters renders JPEG, PNG or WebP and drops an SVG,
+and that a raster would mean an image pipeline in a static site for one asset. That was
+true of a file to be generated *on demand* — and wrong about the actual requirement, which
+is a raster asset, not a pipeline. Rendering it once, offline, with a throwaway script
+and committing the result gives the correct outcome with none of the cost: the build
+still ships no image tooling, the file is reviewable in a diff, and every crawler that
+would have dropped the SVG now reads this one.
 
 ## Layout
 
