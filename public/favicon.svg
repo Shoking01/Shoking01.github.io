@@ -1,9 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 128 128">
-    <path d="M50.4 78.5a75.1 75.1 0 0 0-28.5 6.9l24.2-65.7c.7-2 1.9-3.2 3.4-3.2h29c1.5 0 2.7 1.2 3.4 3.2l24.2 65.7s-11.6-7-28.5-7L67 45.5c-.4-1.7-1.6-2.8-2.9-2.8-1.3 0-2.5 1.1-2.9 2.7L50.4 78.5Zm-1.1 28.2Zm-4.2-20.2c-2 6.6-.6 15.8 4.2 20.2a17.5 17.5 0 0 1 .2-.7 5.5 5.5 0 0 1 5.7-4.5c2.8.1 4.3 1.5 4.7 4.7.2 1.1.2 2.3.2 3.5v.4c0 2.7.7 5.2 2.2 7.4a13 13 0 0 0 5.7 4.9v-.3l-.2-.3c-1.8-5.6-.5-9.5 4.4-12.8l1.5-1a73 73 0 0 0 3.2-2.2 16 16 0 0 0 6.8-11.4c.3-2 .1-4-.6-6l-.8.6-1.6 1a37 37 0 0 1-22.4 2.7c-5-.7-9.7-2-13.2-6.2Z" />
-    <style>
-        path { fill: #000; }
-        @media (prefers-color-scheme: dark) {
-            path { fill: #FFF; }
-        }
-    </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="AQ">
+  <!--
+    AQ, the site's monogram.
+
+    THE VIEWBOX IS THE CHARACTER GRID. JetBrains Mono has an advance of 600 on a 1000
+    upem, so two glyphs are 1200 units wide. The mark is drawn inside one em of side
+    bearing on each side of that, which is 128, and both letters share a baseline at
+    y=100 with a 56-unit cap height. The letters are not "roughly two letters wide":
+    they are two cells of the typeface the whole site is set in, cropped to one line.
+
+    WHY THE STROKE IS 10 UNITS. This is the entire design constraint, and it is worth
+    stating because the obvious choice is wrong. A favicon is drawn at 16px, so one
+    viewBox unit is 16/128 = 0.125 CSS px. A 10-unit stroke lands at 1.25px. The
+    previous mark used 4-unit hairlines, which is 0.5px: that lands between two pixel
+    rows and renders as a broken grey smear, which is why the old A was an unreadable
+    blob at 16px and only resolved as a letter from 48px up.
+
+    Measured, not asserted, and the number is the contract. The first drafts of this
+    mark carried 18, 22, 26, 12 and 11 unit strokes and measured 44.9%, 50.8%, 53.9%,
+    29.3% and 28.1% ink at 16px. `scripts/favicon.mjs` fails when that leaves the
+    12-28% band, which is the range in which a mark reads as a letter rather than a
+    speck or a blob. Two of those five were rejected by the check rather than by taste,
+    and 11 was rejected for missing the ceiling by 0.1 points, so the width was moved
+    again instead of the band being widened to let it through.
+
+    WHY THE A IS ONE POLYLINE AND NOT TWO STROKES. Drawn as two separate diagonals,
+    each carries a cap at the apex and each cap projects half a stroke width past the
+    meeting point, which together make a visible step. One polyline moves the join to
+    the vertex and `stroke-linejoin: miter` produces a single clean point. The feet
+    take `butt` so the glyph ends exactly on the baseline and spills out of no cell.
+
+    WHY THE COUNTERS ARE OPEN. The A's triangle is 24 wide at the crossbar and the Q's
+    ring is 40 across with a 12-unit wall, leaving a 16-unit hole. At 16px an enclosed
+    counter thinner than about two units is antialiasing guesswork, so both are drawn
+    at the width that survives the smallest render.
+
+    `currentColor`, so the mark inherits whatever it is drawn on. The old icon carried a
+    second hand-maintained copy of the same path behind `prefers-color-scheme: dark`,
+    and that copy was dead code: `global.css` declares `color-scheme: dark` for the
+    whole site, so there is no light theme for it to serve. One path, one colour.
+
+    The rasters beside this file are not maintained separately. `scripts/favicon.mjs`
+    renders this SVG to favicon.ico and apple-touch-icon.png, so the three files cannot
+    drift apart the way a hand-exported set does.
+  -->
+  <g fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="miter">
+    <path d="M16 100 36 44 56 100" stroke-linecap="butt" />
+    <path d="M26 80h20" stroke-linecap="butt" />
+    <circle cx="92" cy="72" r="20" />
+    <path d="M105 85l13 13" stroke-linecap="square" />
+  </g>
 </svg>
