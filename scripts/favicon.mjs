@@ -28,7 +28,8 @@
  */
 
 import { spawn } from 'node:child_process'
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -230,6 +231,26 @@ try {
   const ico = buildIco(icoParts)
   writeFileSync(join(root, 'public', 'favicon.ico'), ico)
   console.log(`  ${'favicon.ico'.padEnd(24)} ${ICO_SIZES.join('/')}     ${String(ico.length).padStart(5)} bytes  (fallback for browsers without SVG)`)
+
+  // The hashed copy the layout actually links. A favicon on a bare path is cached by
+  // URL and never re-requested, so a replaced icon looks like it had no effect; a name
+  // that changes with the content makes the browser fetch the new one immediately and
+  // keeps serving the old one from cache for everyone who already had it.
+  const svgBytes = readFileSync(svgPath)
+  const svgHash = createHash('sha256').update(svgBytes).digest('hex').slice(0, 8)
+  const hashedName = `favicon-${svgHash}.svg`
+  writeFileSync(join(root, 'public', hashedName), svgBytes)
+  console.log(`  ${hashedName.padEnd(24)} 1        ${String(svgBytes.length).padStart(5)} bytes  (what the layout links; name tracks content)`)
+
+  // Stale hashed copies from earlier runs would accumulate forever and nothing would
+  // ever reference them, so the directory is swept to just the one this run produced.
+  const publicDir = join(root, 'public')
+  for (const entry of readdirSync(publicDir)) {
+    if (/^favicon-[0-9a-f]{8}\.svg$/.test(entry) && entry !== hashedName) {
+      rmSync(join(publicDir, entry), { force: true })
+      console.log(`  removed stale ${entry}`)
+    }
+  }
 
   // Fail loudly rather than shipping an icon that is the wrong shape.
   const { result: probe } = await withTimeout(browser.send('Runtime.evaluate', {

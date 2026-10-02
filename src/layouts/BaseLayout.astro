@@ -1,4 +1,8 @@
 ---
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { ClientRouter } from 'astro:transitions'
 
 import { paletteCss } from '../styles/palette'
@@ -11,6 +15,22 @@ import SiteNav from '../components/SiteNav.astro'
 import SiteFooter from '../components/SiteFooter.astro'
 import Seo from '../components/Seo.astro'
 import { site } from '../site.config'
+
+/**
+ * Where `public/` is.
+ *
+ * `process.cwd()`, not `import.meta.url`. Astro compiles a component's frontmatter into
+ * a Vite module, so `import.meta.url` there is the URL of the BUNDLE rather than of this
+ * `.astro` file, and `../..` walked up from it resolves somewhere that has no `public/`
+ * in it. The symptom was silent and looked like a hash bug: `readFileSync` threw, the
+ * `catch` returned `''`, and the page shipped `href="/favicon-.svg"` — a link to nothing
+ * that still passed every other check.
+ *
+ * Astro sets the cwd to the project root for the whole build, and this is a file read
+ * during the build, so that is the one location guaranteed to be right. The failure mode
+ * of being wrong is caught rather than empty: see `fingerprint`.
+ */
+const publicDir = join(process.cwd(), 'public')
 
 /**
  * The shell. Nav, main, footer, skip link, and the one script the site ships.
@@ -37,6 +57,52 @@ interface Props {
 const { title, description, type, publishedTime } = Astro.props
 
 const palette = paletteCss()
+
+/**
+ * A content fingerprint for the icon, used to name the file rather than to query it.
+ *
+ * THE BUG THIS FIXES. The icon was `/favicon.svg` on a bare path. A URL that never
+ * changes is a file the browser never asks for again: the first response is cached and
+ * nothing in the page can ever make the browser suspect the file had changed underneath
+ * it. GitHub Pages adds `Cache-Control: max-age=600` on top, so the observable symptom
+ * was a tab still showing the previous site's icon long after a deploy that had replaced
+ * every byte of it — with nothing wrong on the server to find, because the server was
+ * serving the correct file and the browser was simply never asking.
+ *
+ * THAT IS WHY "just clear your cache" IS NOT A FIX. It resolves the symptom for the one
+ * person who clears their cache and leaves the mechanism intact for the next person and
+ * for every visitor whose tab was already open.
+ *
+ * WHY THE STAMP IS IN THE FILENAME AND NOT A QUERY STRING. The first attempt appended
+ * `?v=<hash>`, and the built HTML came out with the query stripped: Vite treats an
+ * absolute reference into `public/` as an asset path and rewrites it to the clean one,
+ * so the stamp never reached the browser at all. `dist/index.html` was verified to carry
+ * bare paths and the hash was absent. A query string cannot survive here; a path segment
+ * can, and it is the same thing hashed build output does.
+ *
+ * `sha256` truncated to 8 hex characters: 32 bits is far more than is needed to mean
+ * "this file has not changed", and it keeps the name debuggable. Read from the real file
+ * at build time, so it cannot drift from what is shipped. A missing file yields an empty
+ * stamp and `verify-structure.mjs` check 9 fails on the missing file rather than
+ * shipping a link to nothing.
+ */
+function fingerprint(file: string): string {
+  const path = join(publicDir, file)
+  try {
+    return createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 8)
+  } catch (cause) {
+    // A silent empty string here shipped `/favicon-.svg`, a link to nothing that passed
+    // every other check in the build. An icon that cannot be hashed is a broken build,
+    // not a cosmetic one, so it throws with the path it tried.
+    throw new Error(
+      `favicon: cannot read ${path} to fingerprint it. The icon links in this layout ` +
+        `point at a name derived from this hash, so an empty one is a 404 in the tab. ` +
+        `Original error: ${cause}`,
+    )
+  }
+}
+
+const iconSvg = `/favicon-${fingerprint('favicon.svg')}.svg`
 ---
 
 <!doctype html>
@@ -67,8 +133,13 @@ const palette = paletteCss()
       `theme-color` is `--ctp-base`. Without it Chrome's mobile address bar is white,
       which is a white bar above a near-black site; this is the one declaration that
       makes the browser chrome agree with the page.
+
+      The hashed name on the SVG href is the fingerprint built in the frontmatter. It is
+      what stops a changed icon from being invisible behind a cache: a bare path is
+      never re-fetched, so a new logo would never reach anyone whose tab had already
+      loaded the page once.
     -->
-    <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href={iconSvg} />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
