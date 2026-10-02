@@ -538,10 +538,15 @@ const now =
   /* The same `#` prefix the project cards and the role stacks use for a tool, so a
      wrapped row of skills cannot be misread as a run of prose. It is inline, next to
      its own word, so it is not announced as a list marker and needs no `aria-hidden`
-     span of its own. */
+     span of its own.
+
+     It was `--c-line`, which is overlay2 — the same grey as every quiet rule on the
+     site. That made the one marker repeated on all 26 skills the least noticeable thing
+     on the page, on a rail whose only job is to be scannable. `--c-marker` is teal, the
+     palette's own tooling accent, and it measures 11.01 on base and 8.44 on a card. */
   .group__item::before {
     content: '#';
-    color: var(--c-line);
+    color: var(--c-marker);
     margin-inline-end: 0.35ch;
   }
 

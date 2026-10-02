@@ -59,14 +59,52 @@
   /* ---------------------------------------------------------------------
    * Accents. All clear AA on base, surface0 and surface1. `accent` and `link`
    * are not safe on surface2 — that surface is reserved for `--c-text`.
+   *
+   * THE STATES GOT THEIR OWN COLOURS, and the reason is that the palette already
+   * named them. Mocha ships a rosewater, a teal and a sapphire among its accents, and
+   * Catppuccin uses them the way most palettes do: teal and green for "go", yellow for
+   * "careful", red for "stop". Mapping the lifecycle states onto the colours they were
+   * named for means a reader who has seen any other Mocha-themed tool already knows
+   * what an amber `maintenance` means before reading the word.
+   *
+   * Measured against the surfaces these land on, from the table above:
+   *
+   *   state        token            base    surface0   verdict
+   *   active       --ctp-rosewater  12.95      9.93     AA text on both
+   *   maintenance  --ctp-peach        9.27      7.10     AA text on both
+   *   archived     --ctp-sapphire    8.69      6.66     AA text on both
+   *
+   * `rosewater` and `peach` are the two lightest accents in Mocha and clear AA for TEXT
+   * on every surface including surface2, which is why the two live states use them: a
+   * project card sits on surface0 and the status word is 12px, so this is the case where
+   * 4.5 is the threshold and not 3.0. `sapphire` is mid-range and clears 4.5 on surface0
+   * as well.
+   *
+   * `active` used to be `--c-ok` (green) and `maintenance` was `--c-warn` (yellow).
+   * Both are still in the palette and both now mean something else: green and yellow are
+   * kept for the ONE place they are unambiguous, which is a build or verification state,
+   * and the lifecycle states moved to colours that are not otherwise spoken for.
    * ------------------------------------------------------------------ */
-
   --c-accent: var(--ctp-mauve);
   --c-link: var(--ctp-blue);
   --c-link-hover: var(--ctp-lavender);
+
+  /* Lifecycle. Named for the state, not for the colour, so a retheme changes one line. */
   --c-ok: var(--ctp-green);
   --c-warn: var(--ctp-yellow);
   --c-err: var(--ctp-red);
+
+  /* The three project states. See the table above for the measurements. */
+  --c-state-active: var(--ctp-rosewater);
+  --c-state-maintenance: var(--ctp-peach);
+  --c-state-archived: var(--ctp-sapphire);
+
+  /* The `#` that marks a tool, and the bullets of a role listing. It was `--c-line`
+     (overlay2), which is the same grey as every other quiet line on the page, so the one
+     marker that repeats on every technology in the site was the least noticeable thing
+     on it. `teal` measures 11.01 on base and 8.44 on surface0, so it is safe as text
+     anywhere it would appear, and it is the palette's own "tooling" accent. */
+  --c-marker: var(--ctp-teal);
 
   /* ---------------------------------------------------------------------
    * Non-text decoration. These are NOT readable text colors.
@@ -91,4 +129,45 @@
 
   /* Focus ring: 9.27:1 on base, 5.15:1 even on surface1. */
   --c-focus: var(--ctp-peach);
+
+  /* ---------------------------------------------------------------------
+   * The chrome wash.
+   *
+   * The nav and the footer are two flat bands of `--surface-chrome` on a `--surface-page`
+   * background, and nothing about them says what they are. This is a faint teal over the
+   * same mantle the surface token already names, applied as a gradient on the panel body
+   * so no element needs its own colour, and it is the only place on the site where the
+   * accent appears as an area rather than as a word.
+   *
+   * THE OPACITY IS 24% AND THE FIRST NUMBER WAS WRONG IN THE OPPOSITE DIRECTION. The
+   * first pass was 8%, defended as "subtle" and as "stays inside the elevation ramp".
+   * Both were true, and together they made it invisible: mantle is rgb(24,24,37) and 8%
+   * moves the channels by +10,+16,+14, which is a tint nobody perceives. 45% was the
+   * other failure — it reads, but the footer's subtext0 drops to 5.39:1 and the band stops
+   * being a tint at all. 24% sits between: +30,+48,+42 over the same base.
+   *
+   * AND THE MEASUREMENT THAT CAUGHT IT WAS ITSELF WRONG, which is recorded because it
+   * nearly sent this the wrong way entirely. A screenshot of the built page sampled
+   * `#181825` — the exact unwashed colour — three times, with the gradient confirmed
+   * present in the computed style, which reads as proof the wash does not exist. It does
+   * not: the sample was landing on the panel's top rail, 22.5px of box-drawing TEXT rather
+   * than surface. A control bar painted `#ff0000` sampled `#ff0000` through the same code,
+   * so the sampler was not broken — it was sampling the wrong pixel, and a wrong pixel and
+   * an absent effect are indistinguishable from the console.
+   *
+   * Looking at the page settled it. The wash is plainly visible, fading down across the
+   * band. The sampler is right about CONTRAST and useless about "does this read as tinted",
+   * which is a judgement no pixel value can make. Both tools were needed and neither was
+   * sufficient.
+   *
+   * THE GRADIENT IS WHAT KEEPS IT OFF THE ELEVATION RAMP. A flat 24% fill would put the
+   * whole band at `#36484f`, 1.836:1 from mantle — past the 1.396:1 that separates chrome
+   * from a card, so the nav would be claiming a raised surface the token layer does not
+   * mean. Fading to transparent across the band's height keeps the top edge near chrome
+   * and lets the bottom fall to it, so the accent reads as light rather than as elevation.
+   *
+   * Contrast on the washed band, all above AA for TEXT: brand 9.99:1, nav links 8.16:1,
+   * footer subtext0 6.49:1. Measured by blending, and confirmed on the rendered page.
+   * ------------------------------------------------------------------ */
+  --wash-chrome: color-mix(in oklab, var(--ctp-teal) 24%, transparent);
 }

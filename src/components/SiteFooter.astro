@@ -37,6 +37,22 @@ const links = site.links.filter((link) => link.href.length > 0)
 </Panel>
 
 <style>
+  /* The same teal wash the nav carries, mirrored so the accent reads as coming from the
+     edge of the viewport rather than from the middle of the page. `--wash-chrome` is
+     measured in `tokens.css`, including the contrast it preserves for the footer's own
+     `subtext0` links at 6.79:1.
+
+     Mirrored, not identical: the nav's gradient fades downward from the top and this one
+     fades upward from the bottom, so the two bands frame the content instead of both
+     bleeding inward from the same direction. Not animated, for the same reason the nav's
+     is not, and for the same reason it costs nothing: the footer does not move. */
+  /* `:global` on both halves, for the same reason as the nav's: the element is `Panel`'s
+     root and carries `Panel`'s scope id, so a scoped `.footer` in front of it would
+     compile to a compound matching nothing. */
+  :global(.footer) :global(.panel__body) {
+    background-image: linear-gradient(to top, var(--wash-chrome), transparent 72%);
+  }
+
   /* `:global`, because `Panel` renders this element and a scoped `.footer` could never
      match it — so `margin-block-start: auto` was doing nothing and the footer was not
      being pushed to the bottom of the shell. Unlike the padding cases this one is safe

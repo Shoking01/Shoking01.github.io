@@ -124,6 +124,33 @@ function isCurrent(route: Route): boolean {
     z-index: 3;
   }
 
+  /* The teal wash, as a gradient over the panel body rather than a background colour on
+     the panel. Two reasons. It needs no element and no new prop on `Panel`, which owns
+     `background-color`; and a gradient can fade, so the accent reads as coming from the
+     top edge of the page and thinning out rather than as a flat tinted rectangle.
+
+     The opacity, the contrast it preserves and the elevation it must NOT cross are all
+     measured and recorded in `tokens.css` under `--wash-chrome`. The short version: at
+     8% every colour on this band stays above AA for text, and the band stays 1.29:1
+     below `--surface-panel`, so it tints the chrome without promoting it to a raised
+     surface. At 16% it would sit further from `mantle` than `surface0` does and be
+     claiming an elevation the token layer does not mean.
+
+     The gradient is NOT animated and that is a deliberate exception. `Panel` transitions
+     `--tint-hover`, which names `color`, `background-color` and `border-color` but not
+     `background-image` — cross-fading two gradients needs a second element or a
+     registered custom property. It does not matter here: the nav is `position: sticky`
+     and never moves under a pointer, so there is nothing to cross-fade FROM. */
+  /* `:global` on BOTH sides, and check 8 is what proved the half-fixed version was wrong:
+     `.nav :global(.panel__body)` looks right and is not, because the leading `.nav` is
+     still scoped to this component while the element it names is `Panel`'s root and
+     carries `Panel`'s id. The compound matched nothing and the wash was never applied.
+     Every token crosses this boundary on its own — no selector match needed — which is
+     why `--panel-position` works and this does not. */
+  :global(.nav) :global(.panel__body) {
+    background-image: linear-gradient(to bottom, var(--wash-chrome), transparent 72%);
+  }
+
   /* One row, brand against destinations, spread to the full width of the frame. The
      panel is the same fluid width as the shell, so the nav's left edge is the main
      column's left edge and the two stack on the grid rather than merely near it. */

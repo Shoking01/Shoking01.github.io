@@ -428,8 +428,13 @@ const languages = 'Spanish native, English professional working proficiency (B2+
      announcing "star" before every highlight would be noise. It is a separate span
      rather than a `::before` because a generated box is not selectable, not copyable and
      not reachable by a text zoom that re-flows the grid. */
+  /* The bullet that starts a highlight. `--c-marker` (teal) rather than the accent, for
+     the same reason the `#` is teal and not mauve: a listing of technologies and a
+     listing of achievements are the same kind of thing on this page, and one colour for
+     "a discrete item in a list" reads as a system rather than as decoration. `teal`
+     measures 11.01 on `base`, and this text is unframed, so it is safe at 12px. */
   .role__bullet {
-    color: var(--c-accent);
+    color: var(--c-marker);
   }
 
   .role__stack {
@@ -445,7 +450,7 @@ const languages = 'Spanish native, English professional working proficiency (B2+
 
   .role__tech::before {
     content: '#';
-    color: var(--c-line);
+    color: var(--c-marker);
   }
 
   /* ---- Skills ----------------------------------------------------------------
@@ -509,10 +514,14 @@ const languages = 'Spanish native, English professional working proficiency (B2+
   /* The same `#` prefix the project cards and the role stacks use for a tool, so a
      wrapped row of skills cannot be misread as a run of prose. It is inline, next to its
      own word, so it is not announced as a list marker and needs no `aria-hidden` span of
-     its own — unlike the `*` above, which starts a line. */
+     its own — unlike the `*` above, which starts a line.
+
+     `--c-marker` rather than `--c-line`, which is overlay2 and therefore the same grey as
+     every quiet rule here: the marker that repeats on all 26 skills was the least
+     noticeable thing on the page. */
   .group__item::before {
     content: '#';
-    color: var(--c-line);
+    color: var(--c-marker);
     margin-inline-end: 0.35ch;
   }
 

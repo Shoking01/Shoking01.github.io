@@ -36,9 +36,9 @@
  */
 
 const MAP = {
-  active: { glyph: '+', label: 'active', token: '--c-ok', filled: 3 },
-  maintenance: { glyph: '~', label: 'maintenance', token: '--c-warn', filled: 2 },
-  archived: { glyph: '-', label: 'archived', token: '--c-text-muted', filled: 1 },
+  active: { glyph: '+', label: 'active', token: '--c-state-active', filled: 3 },
+  maintenance: { glyph: '~', label: 'maintenance', token: '--c-state-maintenance', filled: 2 },
+  archived: { glyph: '-', label: 'archived', token: '--c-state-archived', filled: 1 },
 } as const
 
 const TOTAL = 3
@@ -77,16 +77,20 @@ const segments = Array.from({ length: TOTAL }, (_, i) => i < state.filled)
     white-space: nowrap;
   }
 
+  /* The state colour is applied through a custom property on each state rather than by
+     three separate `color` declarations. The token is named for the STATE, so the hue
+     lives in exactly one place — `tokens.css` — and this file never mentions a palette
+     name at all. Swapping the whole lifecycle palette is one edit there.
+     `currentColor` then flows from here into the meter's filled segments, so the bars
+     and the word cannot end up different colours. */
   .status--active {
-    color: var(--c-ok);
+    color: var(--c-state-active);
   }
   .status--maintenance {
-    color: var(--c-warn);
+    color: var(--c-state-maintenance);
   }
-  /* Archived is the one state allowed to be quiet: `--c-text-muted` is documented as
-     safe up to `surface0`, and a card sits on `surface0`. */
   .status--archived {
-    color: var(--c-text-muted);
+    color: var(--c-state-archived);
   }
 
   /* The unfilled segments are not invisible, which is what makes this a three-step

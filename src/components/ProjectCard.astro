@@ -251,7 +251,9 @@ const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment :
 
   /* `#` marks a tool, everywhere on this site, so a run of technology names cannot be
      misread for a run of prose. Inline and next to its own word, so it is not announced
-     as a list marker. */
+     as a list marker. `--c-marker` is teal rather than the `--c-line` grey it was: this
+     marker repeats on every technology of every card, and it was the quietest thing on
+     the card it labels. */
   .card__stack {
     display: flex;
     flex-wrap: wrap;
@@ -260,7 +262,7 @@ const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment :
 
   .card__tech::before {
     content: '#';
-    color: var(--c-line);
+    color: var(--c-marker);
   }
 
   .card__date {
