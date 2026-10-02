@@ -1,0 +1,31 @@
+# Line endings are a correctness constraint here, not a preference, and this file exists
+# because one thing on this site is a build input whose HASH is baked into the output.
+#
+# THE FAILURE THIS PREVENTS. `public/favicon.svg` is fingerprinted: `BaseLayout.astro`
+# hashes it at build time and links `favicon-<hash>.svg`, a file `scripts/favicon.mjs`
+# writes under that exact name. Nothing checks that the two agree beyond the file
+# existing, so if the bytes differ by a single newline between the machine that
+# generated the name and the machine that built the page, the link points at a file
+# that was never written and the tab silently loses its icon.
+#
+# That is not hypothetical. `core.autocrlf=true` on Windows checked the SVG out with
+# CRLF while the committed blob kept LF, so the local hash was of the CRLF file and the
+# Linux CI hash was of the LF one. The names did not match, the icon 404'd, and the
+# deploy failed with `every declared icon resolves to a file that ships` — a check that
+# had been written to catch exactly this and could not, because the file whose name
+# depended on it was the one thing that was not normalised.
+#
+# The rule is the standard one: text in the repository is LF, and it is checked out as
+# LF everywhere. A file whose bytes are a fingerprint input must be byte-identical on
+# every machine, which means it must not be subject to the platform's line-ending
+# convention at all.
+
+* text=auto eol=lf
+
+# Binary, and explicitly so. `git diff` on these must never try to decode them and
+# `autocrlf` must never touch a byte. `og.png` is the social card and the icon rasters
+# are generated output; a changed byte in any of them changes a hash or an image.
+*.png      binary
+*.jpg      binary
+*.ico      binary
+*.woff2    binary
