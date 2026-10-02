@@ -97,6 +97,42 @@
   --leading-prose: 1.75; /* TUI is the shell; this is what makes reading inside it work. */
 
   --tracking-label: 0.08em; /* uppercase ASCII labels only, never a frame */
+
+  /* ---- Motion ---------------------------------------------------------------
+   *
+   * THESE ARE NOT DECORATION, they are the reason the site's motion policy could stay
+   * as narrow as it is. Until these tokens existed, every interactive element changed
+   * colour instantly, and the whole site was one hard edge per hover: measurable, but
+   * it read as a table of links rather than as something a hand moves across. Adding a
+   * transition is therefore what makes an instant hover acceptable, not an extra.
+   *
+   * 140ms IS A NUMBER CHOSEN AGAINST THE SCANLINE, not picked for smoothness. The
+   * overlay drifts one 3px band every 8s, so the fastest thing already moving on the
+   * page completes a cycle in 8000ms. An interaction that takes 400ms to settle is
+   * 20% of that cycle and reads as sluggish against it; 140ms is under 2%. Anything in
+   * the 120-180ms band sits below the threshold where a delay becomes a wait, and
+   * anything above 200ms starts to feel like the page is thinking about it.
+   *
+   * THE EASING IS A STEP FUNCTION, and that is the deliberate part. This is a terminal
+   * aesthetic: a cursor moves between cells, it does not drift. `cubic-bezier(.2, 0, 0, 1)`
+   * leaves the gate with velocity and arrives with none, which is what a machine
+   * settling into a position looks like. A symmetric `ease-in-out` would be a soft
+   * physical ease, and soft physical easing is the opposite of this site's language.
+   *
+   * `color` and `background-color` only, never `all`. A `transition: all` would also
+   * transition `width` and `height` on anything that ever animates them, which is how a
+   * hover on a card turns into a layout-thrashing resize on a slow machine. Naming the
+   * properties is what keeps a motion addition from becoming a performance regression.
+   *
+   * Every consumer of these is still covered by the catch-all in `global.css`, which
+   * forces `transition-duration: 0.01ms` under `prefers-reduced-motion: reduce`. That
+   * catch-all is why adding transitions needed no new entry in `verify-structure.mjs`:
+   * the check only tracks `@keyframes`, and there are none here. */
+  --dur-hover: 140ms;
+  --ease-step: cubic-bezier(0.2, 0, 0, 1);
+  --tint-hover: color 140ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 140ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 html {
@@ -228,6 +264,7 @@ body {
   text-decoration: underline;
   text-underline-offset: 0.2em;
   text-decoration-thickness: 1px;
+  transition: var(--tint-hover);
 }
 
 .prose a:hover {

@@ -139,7 +139,48 @@ const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment :
 
      Padding now goes through `Panel`'s `padBlock` / `padInline` props, which resolve as
      custom properties on the element and so cross the scope boundary with nothing to
-     match and no specificity to lose. */
+     match and no specificity to lose.
+
+     THE CARD'S OWN HOVER STATE. `Panel` transitions its frame from `--c-frame` to
+     `--c-line` under a pointer, which the card inherits for free.
+
+     `:global`, and the reason is the one `verify-structure.mjs` check 8 exists for.
+     This element is `<Panel>`'s root, so it carries `Panel`'s scope id and not this
+     component's: a scoped `.card` compiles to `.card[data-astro-cid-y2vllrex]`, which
+     matches nothing. That is not theoretical — this rule was written scoped first and
+     the built CSS was checked, and it came out with the wrong cid on it. The card would
+     have lifted no surface and set no frame colour while looking perfectly correct in
+     the stylesheet.
+
+     The custom properties would have crossed the boundary either way, since they need
+     no selector match; it is the `transition` and the `:hover` that would have been
+     dead. Naming the surface change through a property instead of a selector is what
+     makes this survive, and it is the same mechanism as `padBlock` above.
+
+     `--frame-hover` is `--c-text` rather than the `--c-line` the panel defaults to. A
+     card's frame bounds the project's own name and repository, so it earns a stronger
+     hover than a frame around a block of metadata: `text` measures 8.69:1 on `surface0`
+     against `overlay2`'s 4.45:1. Still a frame and never a text colour, so check 3 holds
+     either way.
+
+     The card sits on `--surface-panel`, so `--surface-raised` is exactly one rung up the
+     elevation ramp and no further.
+
+     There is deliberately NO `transition` here. It was there, and it did nothing:
+     `Panel` declares `transition: var(--tint-hover)` on its own base rule, that selector
+     carries Panel's `data-astro-cid` and weighs (0,2,0) against this file's (0,1,0), and
+     so the panel's declaration won. The card's surface lifted with a hard edge while its
+     frame faded, and nothing in either stylesheet said why. `Panel` now names
+     `background-color` in the list it transitions, so the card inherits the behaviour
+     instead of racing it. */
+
+  :global(.card) {
+    --frame-hover: var(--c-text);
+  }
+
+  :global(.card):hover {
+    background-color: var(--surface-raised);
+  }
 
   .card__head {
     display: flex;
@@ -167,6 +208,7 @@ const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment :
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.2em;
+    transition: var(--tint-hover);
   }
 
   .card__case:hover {
@@ -235,6 +277,7 @@ const repoLabel = source ? (segment && source.href.endsWith(segment) ? segment :
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.2em;
+    transition: var(--tint-hover);
   }
 
   .card__repo:hover {

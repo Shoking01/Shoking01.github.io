@@ -103,6 +103,10 @@ const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
   .panel {
     --panel-pad-block: 0.7em;
     --panel-pad-inline: 1ch;
+    /* What the frame is painted in, and what it becomes under a pointer. See the hover
+       note below for why this is a custom property and not a bare declaration. */
+    --frame-idle: var(--c-frame);
+    --frame-hover: var(--c-line);
 
     /* Exposed rather than hardcoded, and the reason is a bug that was actually live.
 
@@ -150,6 +154,54 @@ const vrail = '\u2502\n'.repeat(Math.max(rows, 1) - 1) + '\u2502'
   }
   .panel--highest {
     background-color: var(--surface-highest);
+  }
+
+  /* THE FRAME RESPONDS TO A POINTER, and the interesting part is that the frame is TEXT.
+
+     A panel's border is a run of `─` and a column of `│`, not a CSS border. They are
+     real glyphs painted in `color`, which means a `color` transition animates the entire
+     frame — every rail and both sides — without a single extra element and without
+     touching layout. A `border-color` transition could not do this at all, because
+     there is no border.
+
+     `--c-frame` is `overlay0` at 2.57:1 on a panel and `--c-line` is `overlay2` at 4.45:1,
+     so the hover state is a real increase in contrast and not a decorative shimmer.
+     Both are below the 4.5:1 text threshold, which is correct and unchanged: the frame
+     never carries text, and `verify-structure.mjs` check 3 fails the build if either is
+     used AS one.
+
+     WHY A CUSTOM PROPERTY RATHER THAN A `:hover` RULE. The obvious version is
+     `.panel:hover { color: var(--c-line) }`. That would work for colour, but it puts the
+     hover state on the panel element while the frame reads `color` from the same rule
+     that sets it, and a consumer cannot then say what "hovered" means in its own terms.
+     Two properties make the state nameable: a panel can be hovered by a pointer, and a
+     card inside it can be hovered by a pointer, and the second does not have to
+     reimplement the first. `ProjectCard` uses `--frame-hover` for exactly that.
+
+     `transition` sits on the base rule so the return trip is animated too. Putting it
+     on `:hover` alone means the element only transitions INTO the state and snaps back
+     out, which is the single most common way a hover transition ends up feeling broken.
+
+     THE PROPERTY LIST IS COMPLETE ON PURPOSE, and this was a bug rather than a
+     decision. It read `transition: color …` alone, which is right for the frame and
+     wrong for a panel that also lifts its own surface: `.panel[data-astro-cid]` weighs
+     (0,2,0) and a consumer's `.card` weighs (0,1,0), so the panel's declaration won and
+     the card's `transition: background-color` was discarded. The surface still changed
+     colour, because a property that is not transitioned changes instantly — so the card
+     lifted with a hard edge while its frame faded. Measured: `transitionProperty`
+     resolved to `color` on an element whose own rule said `background-color`.
+
+     So this list names every property a panel is allowed to animate on hover, which
+     makes it the single declaration a consumer needs to inherit rather than compete
+     with. `--tint-hover` exists for the same reason at the document level. */
+  .panel {
+    color: var(--frame-idle);
+    transition: var(--tint-hover);
+  }
+
+  .panel:hover,
+  .panel:focus-within {
+    color: var(--frame-hover);
   }
 
   /* The four corners sit in single-cell columns so the rails and the vertical rules
