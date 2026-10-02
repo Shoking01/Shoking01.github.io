@@ -14,8 +14,11 @@ pnpm-debug.log*
 
 
 # environment variables
-.env
-.env.production
+# The wildcard form, not just `.env`: Astro and Vite read `.env.local`, `.env.development`,
+# `.env.production.local` and any other `.env.*` file, and those are the ones that tend to
+# hold real values. Listing individual names misses every variant added later.
+.env*
+!.env.example
 
 # macOS-specific files
 .DS_Store
