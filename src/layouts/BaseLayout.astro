@@ -1,5 +1,6 @@
 ---
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -23,14 +24,41 @@ import { site } from '../site.config'
  * a Vite module, so `import.meta.url` there is the URL of the BUNDLE rather than of this
  * `.astro` file, and `../..` walked up from it resolves somewhere that has no `public/`
  * in it. The symptom was silent and looked like a hash bug: `readFileSync` threw, the
- * `catch` returned `''`, and the page shipped `href="/favicon-.svg"` — a link to nothing
- * that still passed every other check.
+ * `catch` returned an empty string, and the page shipped `href="/favicon-.svg"` — a
+ * link to nothing that still passed every other check.
  *
  * Astro sets the cwd to the project root for the whole build, and this is a file read
- * during the build, so that is the one location guaranteed to be right. The failure mode
- * of being wrong is caught rather than empty: see `fingerprint`.
+ * during the build, so that is the one location guaranteed to be right.
  */
 const publicDir = join(process.cwd(), 'public')
+
+/**
+ * The bytes of a public file as the REPOSITORY holds them, not as the working copy does.
+ *
+ * Both halves of the fingerprint have to read the same bytes or the name is wrong, and
+ * "the working copy" is not a single answer. `.gitattributes` forces LF in the repository
+ * and on CI's checkout, while a Windows worktree with `core.autocrlf=true` holds the file
+ * with CRLF. Reading the working copy here produced `55589999` on Windows and `ac8ed44f`
+ * on Linux, while `scripts/favicon.mjs` had written the copy under the other one — and the
+ * deploy failed on `every declared icon resolves to a file that ships`, the check written
+ * to catch precisely this.
+ *
+ * `git show HEAD:<path>` returns the committed blob, which is what CI checks out, so both
+ * the generator and this layout compute the same name on every machine. Falls back to the
+ * working copy for a file nothing has committed yet, which is the only case where they can
+ * still disagree, and in that case there is nothing to disagree with.
+ */
+function committedBytes(file: string): Buffer | null {
+  try {
+    return execFileSync('git', ['show', `HEAD:public/${file}`], {
+      cwd: process.cwd(),
+      maxBuffer: 8 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch {
+    return null
+  }
+}
 
 /**
  * The shell. Nav, main, footer, skip link, and the one script the site ships.
@@ -88,8 +116,9 @@ const palette = paletteCss()
  */
 function fingerprint(file: string): string {
   const path = join(publicDir, file)
+  let bytes: Buffer
   try {
-    return createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 8)
+    bytes = committedBytes(file) ?? readFileSync(path)
   } catch (cause) {
     // A silent empty string here shipped `/favicon-.svg`, a link to nothing that passed
     // every other check in the build. An icon that cannot be hashed is a broken build,
@@ -100,6 +129,7 @@ function fingerprint(file: string): string {
         `Original error: ${cause}`,
     )
   }
+  return createHash('sha256').update(bytes).digest('hex').slice(0, 8)
 }
 
 const iconSvg = `/favicon-${fingerprint('favicon.svg')}.svg`

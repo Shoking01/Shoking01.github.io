@@ -27,7 +27,7 @@
  *   node scripts/favicon.mjs
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -36,6 +36,24 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const svgPath = join(root, 'public', 'favicon.svg')
+
+/**
+ * The committed bytes of a tracked file, or null when it is not tracked.
+ *
+ * Reads the git blob rather than the working copy, so a hash taken here is the same hash
+ * CI takes on its checkout regardless of the line endings the local platform has applied.
+ */
+function trackedBytes(file) {
+  try {
+    return execFileSync('git', ['show', `HEAD:public/${file}`], {
+      cwd: root,
+      maxBuffer: 8 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch {
+    return null
+  }
+}
 
 /* --ctp-text and --ctp-base from the Mocha palette, i.e. `--c-text` and
    `--surface-page` in the token layer. Duplicated as literals because this script
@@ -236,11 +254,20 @@ try {
   // URL and never re-requested, so a replaced icon looks like it had no effect; a name
   // that changes with the content makes the browser fetch the new one immediately and
   // keeps serving the old one from cache for everyone who already had it.
-  const svgBytes = readFileSync(svgPath)
-  const svgHash = createHash('sha256').update(svgBytes).digest('hex').slice(0, 8)
+  //
+  // READ THROUGH `git show`, NOT FROM DISK. That is why the first deploy of this failed.
+  // `.gitattributes` forces LF in the repository and on CI's checkout, but a Windows
+  // worktree with `core.autocrlf=true` still holds the file with CRLF. So the local hash
+  // was taken over 3860 bytes and CI's over 3800, the two names did not match, and the
+  // linked file did not exist on the machine that built the page. `git show` returns the
+  // committed blob, which is byte-identical to what CI reads, so the name written here is
+  // the name CI computes. Falls back to the working copy for an icon nobody has committed
+  // yet, which is the only case where the two could still disagree.
+  const sourceBytes = trackedBytes('favicon.svg') ?? readFileSync(svgPath)
+  const svgHash = createHash('sha256').update(sourceBytes).digest('hex').slice(0, 8)
   const hashedName = `favicon-${svgHash}.svg`
-  writeFileSync(join(root, 'public', hashedName), svgBytes)
-  console.log(`  ${hashedName.padEnd(24)} 1        ${String(svgBytes.length).padStart(5)} bytes  (what the layout links; name tracks content)`)
+  writeFileSync(join(root, 'public', hashedName), sourceBytes)
+  console.log(`  ${hashedName.padEnd(24)} 1        ${String(sourceBytes.length).padStart(5)} bytes  (what the layout links; name tracks content)`)
 
   // Stale hashed copies from earlier runs would accumulate forever and nothing would
   // ever reference them, so the directory is swept to just the one this run produced.
