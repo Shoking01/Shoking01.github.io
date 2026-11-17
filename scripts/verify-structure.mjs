@@ -1,11 +1,14 @@
 /**
  * Structural verification of the built site.
  *
- * These are the constraints in the feature document that no compiler enforces: no
+ * These are the constraints in the feature documents that no compiler enforces: no
  * external font request, every animation neutralised under `prefers-reduced-motion`,
- * `overlay0` never used as a readable text colour, and no client-side JavaScript
- * beyond the view-transition router. Each one is a rule that is easy to break by
- * accident six months from now and impossible to notice by looking at a page.
+ * `overlay0` never used as a readable text colour, and client-side JavaScript limited
+ * to the view-transition router plus the one declared interactive shell. Each one is a
+ * rule that is easy to break by accident six months from now and impossible to notice
+ * by looking at a page. The shell checks (10-12) are the contract for
+ * `odd/tasks/terminal-interactive.md`: the terminal is interactive, but its content is
+ * in the HTML before JavaScript and its motion still obeys the user's OS setting.
  *
  * Run against `dist/`, so it checks what actually ships rather than what the source
  * intends. Exits non-zero on the first failure.
@@ -150,15 +153,18 @@ check(
 )
 // The allowlist is the honest way to say "this keyframe is handled, and here is how":
 // the named animations are killed by SELECTOR, so the block never has to contain the
-// keyframe's own name. A name in this list is a claim that something above names the
-// rule it drives, so adding a keyframe without a selector to kill it fails here rather
-// than shipping. `caret-blink` left this list when the caret did.
+// keyframe's own name. A name in this list is a claim that a selector above names the
+// rule it drives, and check 12 asserts those selectors actually exist. `caret-blink`
+// left this list when the caret did, and came back when the interactive shell did.
+const NEUTRALISED_BY_SELECTOR = ['scanline-drift', 'caret-blink', 'shell-reveal']
 check(
   'every @keyframes declared in the project is reachable from that block',
   keyframes.length === 0 ||
     keyframes.every(
       (name) =>
-        ['scanline-drift'].includes(name) || reducedBlock.includes(`.${name}`) || reducedBlock.includes(name),
+        NEUTRALISED_BY_SELECTOR.includes(name) ||
+        reducedBlock.includes(`.${name}`) ||
+        reducedBlock.includes(name),
     ),
   `keyframes: ${keyframes.join(', ')}`,
 )
@@ -197,19 +203,29 @@ check(
 )
 
 /* ------------------------------------------------------------------ *
- * 4. No client-side JavaScript beyond the view-transition router
+ * 4. Client-side JavaScript is limited to two declared exceptions
+ *
+ * The site used to ship exactly one script, so a bare "no scripts" rule was enough.
+ * The interactive shell is the second, and it is allowed by an explicit marker rather
+ * than by deleting the rule: any future script still fails here until it is declared.
  * ------------------------------------------------------------------ */
 const scripts = []
 for (const [file, text] of emitted.filter(([f]) => f.endsWith('.html'))) {
   for (const m of text.matchAll(/<script\b[^>]*>/gi)) scripts.push({ file, tag: m[0] })
 }
-const unexpected = scripts.filter((s) => !/ClientRouter/.test(s.tag))
+const unexpected = scripts.filter((s) => !/ClientRouter/.test(s.tag) && !/\bdata-shell\b/.test(s.tag))
 check(
-  'the only <script> in the built HTML is the view-transition router',
+  'the only scripts in the built HTML are the router and the declared shell',
   scripts.length > 0 && unexpected.length === 0,
   scripts.length
     ? `${scripts.length} script tag(s): ${scripts.map((s) => (s.tag.match(/src="([^"]+)"/) || [, 'inline'])[1]).join(', ')}`
     : 'no script tags found',
+)
+const shellScripts = scripts.filter((s) => /\bdata-shell\b/.test(s.tag))
+check(
+  'the interactive shell ships exactly one declared script',
+  shellScripts.length === 1,
+  `${shellScripts.length} data-shell script tag(s) across ${htmlFiles.length} documents`,
 )
 const islands = emitted.filter(([f]) => f.endsWith('.html')).filter(([, t]) => t.includes('<astro-island'))
 check('no framework islands are rendered', islands.length === 0, `${islands.length} documents with islands`)
@@ -477,6 +493,81 @@ check('theme-color is declared, so mobile browser chrome matches the page',
 check('the icon rasters have a generator, so they cannot drift from the SVG',
   existsSync(join(root, 'scripts', 'favicon.mjs')),
   'scripts/favicon.mjs renders favicon.ico and apple-touch-icon.png from public/favicon.svg')
+
+/* ------------------------------------------------------------------ *
+ * 10. The interactive shell is real, keyboard-operable and progressive
+ *
+ * A shell that only LOOKS interactive is exactly what the previous design removed.
+ * These assertions check the markup that makes it a shell rather than a picture of
+ * one: a form with a real input, a live log, typed boot lines, and command links that
+ * are anchors and therefore still work when JavaScript never runs.
+ * ------------------------------------------------------------------ */
+// The ROOT document, not the first `index.html` the walk happens to find — with
+// nested routes, `/about/index.html` and the case studies match that suffix too.
+const homeHtml = htmlFiles.includes(join(dist, 'index.html')) ? readFileSync(join(dist, 'index.html'), 'utf8') : ''
+const shellMarkers = ['data-shell', 'data-shell-form', 'data-shell-input', 'data-shell-log', 'data-type']
+const missingShell = shellMarkers.filter((marker) => !homeHtml.includes(marker))
+check(
+  'the home page ships an interactive shell with an input, a log and typed boot lines',
+  missingShell.length === 0 && (homeHtml.match(/data-type/g) ?? []).length >= 3,
+  missingShell.length ? `missing: ${missingShell.join(', ')}` : 'all shell markers present',
+)
+check(
+  'the command log is a polite live region',
+  /data-shell-log[^>]*\brole="log"/.test(homeHtml) && /data-shell-log[^>]*\baria-live="polite"/.test(homeHtml),
+  'role="log" and aria-live="polite" on the output region',
+)
+const commandLinks = [...homeHtml.matchAll(/<a\b[^>]*data-shell-command="([^"]+)"[^>]*href="([^"]+)"/gi)]
+const brokenCommands = commandLinks.filter(([, , href]) => !href || href === '#' || href.startsWith('javascript:'))
+check(
+  'quick commands are real anchors, so they work without JavaScript',
+  commandLinks.length >= 4 && brokenCommands.length === 0,
+  `${commandLinks.length} command link(s): ${commandLinks.map(([, name]) => name).join(', ')}`,
+)
+check(
+  'the shell script handles keyboard history and reduced motion',
+  /ArrowUp/.test(homeHtml) && /ArrowDown/.test(homeHtml) && /prefers-reduced-motion/.test(homeHtml),
+  'ArrowUp/ArrowDown history and a reduced-motion guard in the inline script',
+)
+
+/* ------------------------------------------------------------------ *
+ * 11. The Rust spotlight is reachable, on the page and in the shell
+ * ------------------------------------------------------------------ */
+check(
+  'the Rust spotlight has an anchor and a navigation link',
+  /\bid="rust"/.test(homeHtml) && /href="\/#rust"/.test(homeHtml),
+  'id="rust" and href="/#rust"',
+)
+check(
+  'the spotlight uses only claims the site already makes',
+  /Rust/.test(homeHtml) && /GPUI/.test(homeHtml) && /Axum/.test(homeHtml),
+  'Rust, GPUI and Axum appear in the shipped home page',
+)
+check(
+  'the rust command is available in the shell',
+  /data-shell-command="rust"/.test(homeHtml) && /['"]rust['"]/.test(homeHtml),
+  'a quick link and a script entry for `rust`',
+)
+
+/* ------------------------------------------------------------------ *
+ * 12. The two new animations are neutralised under reduced motion
+ *
+ * Check 2 allowlists the keyframes by name; this check proves each name has a real
+ * selector in the reduced-motion block, so an allowlist entry cannot become a lie.
+ * ------------------------------------------------------------------ */
+const newKeyframes = ['caret-blink', 'shell-reveal'].filter((name) => keyframes.includes(name))
+check(
+  'the shell declares the caret blink and line reveal animations',
+  newKeyframes.length === 2,
+  `keyframes: ${keyframes.join(', ')}`,
+)
+check(
+  'both shell animations are explicitly stopped under reduced motion',
+  /\.shell-term__caret/.test(reducedBlock) &&
+    /\.shell-term__line/.test(reducedBlock) &&
+    /animation:\s*none\s*!important/.test(reducedBlock),
+  '.shell-term__caret and .shell-term__line named in the reduced-motion block',
+)
 
 /* ------------------------------------------------------------------ */
 console.log('structure verification\n')

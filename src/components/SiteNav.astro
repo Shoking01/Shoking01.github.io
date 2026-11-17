@@ -5,14 +5,14 @@ import { site } from '../site.config'
 /**
  * The nav is a nav.
  *
- *   Adrián Quirós                                    projects   about
+ *   Adrián Quirós                        shell   projects   rust   about
  *
- * It used to be a shell prompt with a numbered command history under it. The grammar
- * was a static map of the session dressed as a record of one, and it is gone: a
- * portfolio that pretends to be a terminal is a portfolio about pretending to be a
- * terminal. What survives is the part that was load-bearing — a framed panel on the
- * `mantle` rung of the ramp, chrome-sized type, a real `<a href>` for every
- * destination, and the current page marked on a real anchor.
+ * It used to be a shell prompt with a numbered command history under it. That prompt
+ * is gone from HERE, and is not coming back: the interactive shell now lives in its
+ * own panel on the home page, where a command can open a real destination. This nav
+ * stayed a nav — a framed panel on the `mantle` rung of the ramp, chrome-sized type,
+ * a real `<a href>` for every destination, and the current page marked on a real
+ * anchor. `shell` and `rust` are anchors into the home page; `about` is a document.
  *
  * THE BRAND IS THE HOME LINK, and there is deliberately no separate "home" item. Two
  * links to `/` on one line is one destination stated twice, and it makes
@@ -64,7 +64,9 @@ interface Route {
 }
 
 const ROUTES: Route[] = [
+  { href: '/#shell', label: 'shell' },
   { href: '/#projects', label: 'projects' },
+  { href: '/#rust', label: 'rust' },
   { href: '/about', label: 'about', current: '/about' },
 ]
 

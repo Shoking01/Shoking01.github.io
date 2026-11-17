@@ -1,0 +1,474 @@
+---
+import Panel from './Panel.astro'
+import { skillGroups } from '../data/skills'
+import { site } from '../site.config'
+
+/**
+ * ShellTerminal — an interactive shell, not a picture of one.
+ *
+ * This component deliberately reverses an earlier decision. `index.astro` and
+ * `SiteNav.astro` still carry the old argument for removing the terminal theatre;
+ * the owner then chose "Terminal interactivo" for the redesign, so the prompts,
+ * the caret and the typed boot are back on purpose. What is NOT back is a fake
+ * session: every line here is either a fact about this site or an honest command
+ * that navigates to a real destination.
+ *
+ * PROGRESSIVE ENHANCEMENT IS THE CONTRACT. The boot lines are real text in the
+ * built HTML. With no JavaScript they are simply visible, and the command links
+ * below the window are ordinary anchors. The inline script only types, listens
+ * and navigates; it never authors content a crawler or a screen reader needs.
+ *
+ * MOTION. The caret blink and line reveal live in `global.css` so the reduced-motion
+ * block can kill them by selector. The script skips typing entirely when the OS
+ * asks for reduced motion and reveals every line at once instead.
+ */
+
+const email = site.links.find((link) => link.href.startsWith('mailto:'))?.href ?? ''
+
+/** Boot output. Every value comes from data already owned elsewhere on the site. */
+const boot = [
+  { cmd: 'whoami', out: `${site.name} — ${site.role}` },
+  { cmd: 'cat focus.txt', out: site.tagline },
+  { cmd: 'skills --group "native & systems"', out: skillGroups[2].items.join('  /  ') },
+]
+
+/** Quick commands. Each one is a real link, so it works with JavaScript disabled. */
+const commands = [
+  { name: 'help', href: '#shell-help' },
+  { name: 'projects', href: '/#projects' },
+  { name: 'skills', href: '/#skills' },
+  { name: 'rust', href: '/#rust' },
+  { name: 'about', href: '/about' },
+  { name: 'contact', href: email },
+].filter((command) => command.href.length > 0)
+---
+
+<section class="shell-term" id="shell" data-shell aria-label="Interactive terminal">
+  <Panel surface="sunken" class="shell-term__window" padBlock="0.9em" padInline="1.5ch">
+    <div class="shell-term__chrome" aria-hidden="true">
+      <span class="shell-term__dots">
+        <span class="shell-term__dot shell-term__dot--close"></span>
+        <span class="shell-term__dot shell-term__dot--min"></span>
+        <span class="shell-term__dot shell-term__dot--max"></span>
+      </span>
+      <span class="shell-term__title">adrián@portfolio — portfolio.zsh</span>
+      <span class="shell-term__tab">zsh</span>
+    </div>
+
+    <div class="shell-term__screen">
+      <div class="shell-term__boot">
+        {
+          boot.map((line) => (
+            <>
+              <div class="shell-term__line shell-term__line--cmd">
+                <span class="shell-term__prompt" aria-hidden="true">
+                  visitor@portfolio:~$&nbsp;
+                </span>
+                <span class="shell-term__cmd">{line.cmd}</span>
+              </div>
+              <div class="shell-term__line">
+                <span class="shell-term__out" data-type>
+                  {line.out}
+                </span>
+              </div>
+            </>
+          ))
+        }
+      </div>
+
+      <div
+        class="shell-term__log"
+        data-shell-log
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label="Terminal output"
+      ></div>
+
+      <form class="shell-term__form" data-shell-form autocomplete="off">
+        <label class="visually-hidden" for="shell-command">Terminal command</label>
+        <span class="shell-term__prompt" aria-hidden="true">visitor@portfolio:~$</span>
+        <input
+          class="shell-term__input"
+          id="shell-command"
+          data-shell-input
+          name="command"
+          type="text"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          placeholder="type help"
+        />
+        <span class="shell-term__caret" aria-hidden="true"></span>
+        <button class="shell-term__run" type="submit">run</button>
+      </form>
+    </div>
+
+    <div class="shell-term__status" aria-hidden="true">
+      <span>catppuccin mocha</span>
+      <span>jetbrains mono</span>
+      <span>utf-8</span>
+      <span>static</span>
+    </div>
+  </Panel>
+
+  <nav class="shell-term__palette" aria-label="Terminal commands">
+    <span class="label">commands</span>
+    <ul class="shell-term__list" role="list">
+      {
+        commands.map((command) => (
+          <li>
+            <a class="shell-term__quick" data-shell-command={command.name} href={command.href}>
+              {command.name}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  <details class="shell-term__help" id="shell-help">
+    <summary>help — command reference</summary>
+    <p>
+      Type a command and press Enter, or click one above. <code>help</code> opens this
+      reference, <code>clear</code> empties the output, and the rest open a real page
+      or section. Arrow Up and Down walk the command history; Tab completes.
+    </p>
+  </details>
+</section>
+
+<script is:inline data-shell="1">
+  ;(function () {
+    var root = document.documentElement
+    root.classList.add('js')
+
+    var form = document.querySelector('[data-shell-form]')
+    if (!form) return
+    var input = form.querySelector('[data-shell-input]')
+    var log = document.querySelector('[data-shell-log]')
+    var typed = document.querySelectorAll('[data-type]')
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+    // The text is already in the HTML. Reduced motion means no typing at all —
+    // reveal every line at once and leave the content exactly as it shipped.
+    if (reduce.matches) {
+      Array.prototype.forEach.call(typed, function (el) {
+        el.style.color = 'inherit'
+      })
+    } else {
+      Array.prototype.forEach.call(typed, function (el, i) {
+        var full = el.textContent
+        el.textContent = ''
+        el.style.color = 'inherit'
+        var n = 0
+        setTimeout(function step() {
+          n += 1
+          el.textContent = full.slice(0, n)
+          if (n < full.length) setTimeout(step, 9)
+        }, 180 + i * 160)
+      })
+    }
+
+    // Command names and destinations come from the anchors, not from a second
+    // list in this script, so a link can never point somewhere the shell does not.
+    var links = {}
+    Array.prototype.forEach.call(document.querySelectorAll('[data-shell-command]'), function (a) {
+      links[a.getAttribute('data-shell-command')] = a
+    })
+
+    var history = []
+    var cursor = 0
+
+    function write(text, kind) {
+      var line = document.createElement('div')
+      line.className = 'shell-term__line' + (kind ? ' ' + kind : '')
+      line.textContent = text
+      log.appendChild(line)
+      log.scrollTop = log.scrollHeight
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault()
+      var raw = input.value.trim()
+      if (!raw) return
+
+      history.push(raw)
+      cursor = history.length
+      input.value = ''
+      write('visitor@portfolio:~$ ' + raw, 'shell-term__line--cmd')
+
+      var name = raw.split(/\s+/)[0].toLowerCase()
+      if (name === 'clear') {
+        log.textContent = ''
+        return
+      }
+
+      var link = links[name]
+      if (!link) {
+        write('command not found: ' + name + ' — try help', 'shell-term__line--err')
+        return
+      }
+
+      if (name === 'help') {
+        var help = document.getElementById('shell-help')
+        if (help) help.open = true
+        write('help — command reference opened below')
+        if (help) help.scrollIntoView({ block: 'nearest' })
+        return
+      }
+
+      write('opening ' + link.getAttribute('href'))
+      setTimeout(function () {
+        window.location.href = link.getAttribute('href')
+      }, 160)
+    })
+
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowUp' && cursor > 0) {
+        event.preventDefault()
+        cursor -= 1
+        input.value = history[cursor]
+      } else if (event.key === 'ArrowDown' && cursor < history.length) {
+        event.preventDefault()
+        cursor += 1
+        input.value = cursor === history.length ? '' : history[cursor]
+      } else if (event.key === 'Tab') {
+        var matches = Object.keys(links).filter(function (name) {
+          return name.indexOf(input.value.toLowerCase()) === 0
+        })
+        if (matches.length === 1) {
+          event.preventDefault()
+          input.value = matches[0]
+        } else if (matches.length > 1) {
+          event.preventDefault()
+          write(matches.join('  '))
+        }
+      }
+    })
+  })()
+</script>
+
+<style>
+  .shell-term {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1.2ch;
+    min-width: 0;
+  }
+
+  /* The window chrome inside the panel frame. Three Mocha dots, a title and a
+     tab label; all of it is aria-hidden because a decoration is not a control. */
+  .shell-term__chrome {
+    display: flex;
+    align-items: center;
+    gap: 1.5ch;
+    padding-block-end: 0.7em;
+    margin-block-end: 0.9em;
+    border-block-end: 1px solid var(--c-line-subtle);
+    font-size: var(--text-micro);
+  }
+
+  .shell-term__dots {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 0.6ch;
+  }
+
+  .shell-term__dot {
+    display: block;
+    width: 0.85em;
+    height: 0.85em;
+    border-radius: 50%;
+  }
+
+  .shell-term__dot--close {
+    background-color: var(--c-window-close);
+  }
+  .shell-term__dot--min {
+    background-color: var(--c-window-min);
+  }
+  .shell-term__dot--max {
+    background-color: var(--c-window-max);
+  }
+
+  .shell-term__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--c-text-muted);
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shell-term__tab {
+    flex: 0 0 auto;
+    padding: 0.15em 0.8ch;
+    background-color: var(--surface-raised);
+    color: var(--c-text-soft);
+    border-radius: 2px;
+  }
+
+  .shell-term__screen {
+    min-width: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-prose);
+  }
+
+  .shell-term__line {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .shell-term__line--cmd {
+    color: var(--c-text-soft);
+  }
+
+  .shell-term__prompt {
+    color: var(--c-marker);
+    white-space: nowrap;
+  }
+
+  .shell-term__cmd {
+    color: var(--c-text);
+  }
+
+  .shell-term__out {
+    color: var(--c-text-soft);
+  }
+
+  .shell-term__line--err {
+    color: var(--c-err);
+  }
+
+  .shell-term__log:not(:empty) {
+    margin-block-start: 0.4em;
+  }
+
+  .shell-term__form {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8ch;
+    margin-block-start: 1ch;
+    padding-block-start: 0.8em;
+    border-block-start: 1px solid var(--c-line-subtle);
+    min-width: 0;
+  }
+
+  .shell-term__form:focus-within {
+    outline: 1px solid var(--c-focus);
+    outline-offset: 4px;
+  }
+
+  .shell-term__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--c-text);
+    caret-color: var(--c-accent);
+    outline: none;
+  }
+
+  .shell-term__input::placeholder {
+    color: var(--c-text-muted);
+  }
+
+  .shell-term__caret {
+    flex: 0 0 auto;
+    display: inline-block;
+    width: 0.62em;
+    height: 1.05em;
+    background-color: var(--c-accent);
+    vertical-align: text-bottom;
+  }
+
+  .shell-term__run {
+    flex: 0 0 auto;
+    padding: 0.1em 1ch;
+    border: 1px solid var(--c-line);
+    border-radius: 2px;
+    color: var(--c-text-soft);
+    font-size: var(--text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    transition: var(--tint-hover);
+  }
+
+  .shell-term__run:hover {
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+  }
+
+  .shell-term__status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5ch 2ch;
+    margin-block-start: 1.2em;
+    padding-block-start: 0.7em;
+    border-block-start: 1px solid var(--c-line-subtle);
+    font-size: var(--text-micro);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    color: var(--c-text-muted);
+  }
+
+  .shell-term__palette {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.8ch 2ch;
+    min-width: 0;
+  }
+
+  .shell-term__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7ch;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .shell-term__quick {
+    display: inline-block;
+    padding: 0.2em 1ch;
+    border: 1px solid var(--c-line-subtle);
+    border-radius: 2px;
+    color: var(--c-text-soft);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: var(--tint-hover);
+  }
+
+  .shell-term__quick::before {
+    content: '$ ';
+    color: var(--c-marker);
+  }
+
+  .shell-term__quick:hover {
+    border-color: var(--c-accent);
+    color: var(--c-accent);
+  }
+
+  .shell-term__help {
+    font-size: var(--text-sm);
+    color: var(--c-text-soft);
+  }
+
+  .shell-term__help summary {
+    cursor: pointer;
+    color: var(--c-link);
+    transition: var(--tint-hover);
+  }
+
+  .shell-term__help summary:hover {
+    color: var(--c-link-hover);
+  }
+
+  .shell-term__help p {
+    max-width: var(--measure-prose);
+    margin-block-start: 0.7em;
+  }
+</style>

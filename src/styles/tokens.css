@@ -170,4 +170,16 @@
    * footer subtext0 6.49:1. Measured by blending, and confirmed on the rendered page.
    * ------------------------------------------------------------------ */
   --wash-chrome: color-mix(in oklab, var(--ctp-teal) 24%, transparent);
+
+  /* ---------------------------------------------------------------------
+   * Terminal window chrome. The three dots on the interactive shell's title
+   * bar. Decorative only: they sit inside an `aria-hidden` bar, carry no
+   * state, and are named for the part of a window they stand for rather than
+   * for a hue. They reuse Mocha's red/yellow/green, which elsewhere mean
+   * error/warning/ok, because a reader already knows those three as a set;
+   * nothing here is a build or verification state.
+   * ------------------------------------------------------------------ */
+  --c-window-close: var(--ctp-red);
+  --c-window-min: var(--ctp-yellow);
+  --c-window-max: var(--ctp-green);
 }

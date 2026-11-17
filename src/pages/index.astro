@@ -4,19 +4,22 @@ import { getCollection } from 'astro:content'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import AsciiRule from '../components/AsciiRule.astro'
 import ProjectCard from '../components/ProjectCard.astro'
+import ShellTerminal from '../components/ShellTerminal.astro'
+import Panel from '../components/Panel.astro'
 import { skillGroups } from '../data/skills'
 import { site } from '../site.config'
 
 /**
  * Home. Who this is, what this is made of, and what has been built.
  *
- * THE VISUAL LANGUAGE IS NOT THE SIMULATION. The rounded frames, the monospace grid,
- * the `ch` discipline, the elevation ramp and the `#` marker are the identity and all of
- * them stay. What is gone is the theatre: the `user@host:~$` prompt, the command names,
- * the numbered history, the `ls` table, and the blinking caret. A page that pretends to
- * be a terminal is a page about pretending to be a terminal, and this one has enough to
- * say without it. What is left is a site that looks the way it was built and reads like
- * a portfolio rather than a transcript.
+ * THE TERMINAL IS NOW INTERACTIVE, BY THE OWNER'S CHOICE. The rounded frames, the
+ * monospace grid, the `ch` discipline, the elevation ramp and the `#` marker are still
+ * the identity. The `user@host:~$` prompt, the typed boot, the blinking caret and the
+ * command history came back in `ShellTerminal`, but as a working shell rather than a
+ * transcript: every command navigates to a real section, and the boot lines are facts
+ * this site already owns. The earlier version of this page removed that theatre on the
+ * argument that a site pretending to be a terminal is a site about pretending; that
+ * decision was reversed deliberately in `odd/tasks/terminal-interactive.md`.
  *
  * THE ORDER IS STILL THE ARGUMENT: who I am, what I have built, and what I work with.
  * The rail used to sit in the middle carrying build-time facts about the website; it
@@ -155,6 +158,8 @@ const now =
       </div>
     </div>
 
+    <ShellTerminal />
+
     <div class="body">
       <div class="body__main">
         <p class="now">
@@ -186,6 +191,25 @@ const now =
       </div>
 
       <aside class="body__rail">
+        <section class="section" id="rust">
+          <AsciiRule as="div" />
+          <h2 class="section__title">Rust</h2>
+
+          <Panel surface="panel" class="rust__card" padInline="1.5ch">
+            <pre class="rust__mark frames" aria-hidden="true">╭──────────────╮
+│ Rust / GPUI │
+╰──────────────╯</pre>
+            <p class="rust__lead">
+              Now I work in Rust and GPUI because that is where speed and resource consumption
+              are actually decided.
+            </p>
+            <ul class="rust__items" role="list">
+              {skillGroups[2].items.map((item) => <li>{item}</li>)}
+            </ul>
+            <a class="rust__link" href="/#projects">see the projects -&gt;</a>
+          </Panel>
+        </section>
+
         <section class="section" id="skills">
           <AsciiRule as="div" />
           <h2 class="section__title">Skills</h2>
@@ -497,6 +521,47 @@ const now =
   .now__sep {
     color: var(--c-frame);
     margin-inline: 0.5ch;
+  }
+
+  /* ---- Rust spotlight ---------------------------------------------------------
+     The same frame as a project card, but its contents are a claim rather than a
+     case study: one line the owner already wrote on this page, and the native
+     stack from the same taxonomy the skills rail renders. No version numbers,
+     no availability claim, nothing that has to be true next year. */
+  .rust__mark {
+    margin-block-end: 1ch;
+    color: var(--c-accent);
+    font-size: var(--text-xs);
+    line-height: var(--leading-chrome);
+  }
+
+  .rust__lead {
+    font-size: var(--text-base);
+    line-height: var(--leading-prose);
+    color: var(--c-text);
+  }
+
+  .rust__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 1.5ch;
+    margin: 1ch 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--c-text-soft);
+  }
+
+  .rust__items li::before {
+    content: '#';
+    color: var(--c-marker);
+    margin-inline-end: 0.35ch;
+  }
+
+  .rust__link {
+    display: inline-block;
+    margin-block-start: 1.2ch;
+    font-size: var(--text-sm);
   }
 
   /* ---- Skills -----------------------------------------------------------------
