@@ -51,7 +51,7 @@ jobs:
       # the branch, instead of shipping.
       - run: pnpm build
 
-      # The thirteen structural checks run against `dist/`, so they have to come after
+      # The structural checks run against `dist/`, so they have to come after
       # the build. Failing the workflow here stops a bad build from ever reaching Pages,
       # which is the whole value of running them in CI rather than only locally.
       - run: pnpm verify
