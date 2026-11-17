@@ -40,4 +40,6 @@ Route evidence: every unit is one understood behavior; no two independent units 
 
 **L6** — Verification evidence, observed on the final tree: `pnpm build` built 4 pages; `pnpm typecheck` reported 0 errors / 0 warnings / 0 hints; `pnpm verify` reported all 33 checks passed. The inline shell script was extracted from `dist/index.html` and passed `node --check`. The first verify run on T1 produced 9 RED failures; a verifier bug (`find(...endsWith('index.html'))` selecting `/about/index.html`) was corrected to select the root document before the GREEN run.
 
+**L7** — Native review assessment over the committed slice (`25b344f..HEAD`, base-diff): `gentle-ai.review-assessment/v1`, risk `medium` (`executable_change` in `scripts/verify-structure.mjs`), `review_due: false`, `review_due_reason: under_budget` (7 paths, 801 changed lines). No review started, no consent prompt shown; the pending boundary is unchanged and no independent verifier was added. The user did not request a review of this candidate.
+
 **Status: closed — verified.** No pending or skipped checks.
